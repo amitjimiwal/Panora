@@ -66,12 +66,12 @@ export class EngagementController {
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
-      const { remote_data, pageSize, cursor } = query;
+      const { remote_data, limit, cursor } = query;
 
       return this.engagementService.getEngagements(
         remoteSource,
         linkedUserId,
-        pageSize,
+        limit,
         remote_data,
         cursor,
       );
@@ -147,60 +147,5 @@ export class EngagementController {
     } catch (error) {
       throw new Error(error);
     }
-  }
-
-  @ApiOperation({
-    operationId: 'addEngagements',
-    summary: 'Add a batch of Engagements',
-  })
-  @ApiHeader({
-    name: 'x-connection-token',
-    required: true,
-    description: 'The connection token',
-    example: 'b008e199-eda9-4629-bd41-a01b6195864a',
-  })
-  @ApiQuery({
-    name: 'remote_data',
-    required: false,
-    type: Boolean,
-    description: 'Set to true to include data from the original Crm software.',
-  })
-  @ApiBody({ type: UnifiedEngagementInput, isArray: true })
-  @ApiCustomResponse(UnifiedEngagementOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Post('batch')
-  async addEngagements(
-    @Body() unfiedEngagementData: UnifiedEngagementInput[],
-    @Headers('x-connection-token') connection_token: string,
-    @Query('remote_data') remote_data?: boolean,
-  ) {
-    try {
-      const { linkedUserId, remoteSource } =
-        await this.connectionUtils.getConnectionMetadataFromConnectionToken(
-          connection_token,
-        );
-      return this.engagementService.batchAddEngagements(
-        unfiedEngagementData,
-        remoteSource,
-        linkedUserId,
-        remote_data,
-      );
-    } catch (error) {
-      throw new Error(error);
-    }
-  }
-
-  @ApiOperation({
-    operationId: 'updateEngagement',
-    summary: 'Update a Engagement',
-  })
-  @ApiCustomResponse(UnifiedEngagementOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Patch()
-  updateEngagement(
-    @Query('id') id: string,
-    @Body() updateEngagementData: Partial<UnifiedEngagementInput>,
-  ) {
-    return this.engagementService.updateEngagement(id, updateEngagementData);
   }
 }

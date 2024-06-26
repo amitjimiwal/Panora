@@ -63,11 +63,11 @@ export class DealController {
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
-      const { remote_data, pageSize, cursor } = query;
+      const { remote_data, limit, cursor } = query;
       return this.dealService.getDeals(
         remoteSource,
         linkedUserId,
-        pageSize,
+        limit,
         remote_data,
         cursor,
       );
@@ -143,60 +143,5 @@ export class DealController {
     } catch (error) {
       throw new Error(error);
     }
-  }
-
-  @ApiOperation({
-    operationId: 'addDeals',
-    summary: 'Add a batch of Deals',
-  })
-  @ApiHeader({
-    name: 'x-connection-token',
-    required: true,
-    description: 'The connection token',
-    example: 'b008e199-eda9-4629-bd41-a01b6195864a',
-  })
-  @ApiQuery({
-    name: 'remote_data',
-    required: false,
-    type: Boolean,
-    description: 'Set to true to include data from the original Crm software.',
-  })
-  @ApiBody({ type: UnifiedDealInput, isArray: true })
-  @ApiCustomResponse(UnifiedDealOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Post('batch')
-  async addDeals(
-    @Body() unfiedDealData: UnifiedDealInput[],
-    @Headers('x-connection-token') connection_token: string,
-    @Query('remote_data') remote_data?: boolean,
-  ) {
-    try {
-      const { linkedUserId, remoteSource } =
-        await this.connectionUtils.getConnectionMetadataFromConnectionToken(
-          connection_token,
-        );
-      return this.dealService.batchAddDeals(
-        unfiedDealData,
-        remoteSource,
-        linkedUserId,
-        remote_data,
-      );
-    } catch (error) {
-      throw new Error(error);
-    }
-  }
-
-  @ApiOperation({
-    operationId: 'updateDeal',
-    summary: 'Update a Deal',
-  })
-  @ApiCustomResponse(UnifiedDealOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Patch(':id')
-  updateDeal(
-    @Param('id') id: string,
-    @Body() updateDealData: Partial<UnifiedDealInput>,
-  ) {
-    return this.dealService.updateDeal(id, updateDealData);
   }
 }

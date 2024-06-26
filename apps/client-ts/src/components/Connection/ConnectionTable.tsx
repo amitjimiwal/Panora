@@ -44,7 +44,6 @@ export default function ConnectionTable() {
   } 
  
   const linkedConnections = (filter: string) => connections?.filter((connection) => connection.status == filter);
-  //console.log("connections are => "+ JSON.stringify(connections))
   const ts = connections?.map((connection) => ({
     organisation: nameOrg, 
     app: connection.provider_slug,
@@ -125,7 +124,7 @@ export default function ConnectionTable() {
           <AddConnectionButton setIsGenerated={setIsGenerated} />
         }
         <Suspense>
-          {ts && <DataTable data={ts} columns={columns} />}
+          {ts && <DataTable data={ts} columns={columns}/>}
         </Suspense>
       </div>
     </>

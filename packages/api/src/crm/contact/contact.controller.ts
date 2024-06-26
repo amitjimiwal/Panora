@@ -66,11 +66,11 @@ export class ContactController {
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
-      const { remote_data, pageSize, cursor } = query;
+      const { remote_data, limit, cursor } = query;
       return this.contactService.getContacts(
         remoteSource,
         linkedUserId,
-        pageSize,
+        limit,
         remote_data,
         cursor,
       );
@@ -147,59 +147,5 @@ export class ContactController {
     } catch (error) {
       throw new Error(error);
     }
-  }
-
-  @ApiOperation({
-    operationId: 'addCrmContacts',
-    summary: 'Add a batch of CRM Contacts',
-  })
-  @ApiHeader({
-    name: 'x-connection-token',
-    required: true,
-    description: 'The connection token',
-    example: 'b008e199-eda9-4629-bd41-a01b6195864a',
-  })
-  @ApiQuery({
-    name: 'remote_data',
-    required: false,
-    type: Boolean,
-    description: 'Set to true to include data from the original CRM software.',
-  })
-  @ApiBody({ type: UnifiedContactInput, isArray: true })
-  @ApiCustomResponse(UnifiedContactOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Post('batch')
-  async addContacts(
-    @Body() unfiedContactData: UnifiedContactInput[],
-    @Headers('x-connection-token') connection_token: string,
-    @Query('remote_data') remote_data?: boolean,
-  ) {
-    try {
-      const { linkedUserId, remoteSource } =
-        await this.connectionUtils.getConnectionMetadataFromConnectionToken(
-          connection_token,
-        );
-      return this.contactService.batchAddContacts(
-        unfiedContactData,
-        remoteSource,
-        linkedUserId,
-        remote_data,
-      );
-    } catch (error) {
-      throw new Error(error);
-    }
-  }
-
-  @ApiOperation({
-    operationId: 'updateContact',
-    summary: 'Update a CRM Contact',
-  })
-  @UseGuards(ApiKeyAuthGuard)
-  @Patch()
-  updateContact(
-    @Query('id') id: string,
-    @Body() updateContactData: Partial<UnifiedContactInput>,
-  ) {
-    return this.contactService.updateContact(id, updateContactData);
   }
 }

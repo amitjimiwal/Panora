@@ -65,11 +65,11 @@ export class CommentController {
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
-      const { remote_data, pageSize, cursor } = query;
+      const { remote_data, limit, cursor } = query;
       return this.commentService.getComments(
         remoteSource,
         linkedUserId,
-        pageSize,
+        limit,
         remote_data,
         cursor,
       );
@@ -139,48 +139,6 @@ export class CommentController {
           connection_token,
         );
       return this.commentService.addComment(
-        unfiedCommentData,
-        remoteSource,
-        linkedUserId,
-        remote_data,
-      );
-    } catch (error) {
-      throw new Error(error);
-    }
-  }
-
-  @ApiOperation({
-    operationId: 'addComments',
-    summary: 'Add a batch of Comments',
-  })
-  @ApiHeader({
-    name: 'x-connection-token',
-    required: true,
-    description: 'The connection token',
-    example: 'b008e199-eda9-4629-bd41-a01b6195864a',
-  })
-  @ApiQuery({
-    name: 'remote_data',
-    required: false,
-    type: Boolean,
-    description:
-      'Set to true to include data from the original Ticketing software.',
-  })
-  @ApiBody({ type: UnifiedCommentInput, isArray: true })
-  @ApiCustomResponse(UnifiedCommentOutput)
-  @UseGuards(ApiKeyAuthGuard)
-  @Post('batch')
-  async addComments(
-    @Body() unfiedCommentData: UnifiedCommentInput[],
-    @Headers('x-connection-token') connection_token: string,
-    @Query('remote_data') remote_data?: boolean,
-  ) {
-    try {
-      const { linkedUserId, remoteSource } =
-        await this.connectionUtils.getConnectionMetadataFromConnectionToken(
-          connection_token,
-        );
-      return this.commentService.batchAddComments(
         unfiedCommentData,
         remoteSource,
         linkedUserId,

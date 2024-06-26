@@ -15,6 +15,7 @@ import {
   extractVertical,
   needsSubdomain,
   CONNECTORS_METADATA,
+  OAuth2AuthData,
 } from '@panora/shared';
 import { SoftwareMode } from '@panora/shared';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,15 +51,7 @@ export class ConnectionsStrategiesService {
       if (!res) return false;
       return res.status;
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'CUSTOM_CREDENTIALS_ERROR',
-          message:
-            'ConnectionsStrategiesService.isCustomCredentials() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -119,15 +112,7 @@ export class ConnectionsStrategiesService {
 
       return cs;
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'CREATE_CONNECTION_STRATEGY_ERROR',
-          message:
-            'ConnectionsStrategiesService.createConnectionStrategy() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -151,14 +136,7 @@ export class ConnectionsStrategiesService {
 
       return updatedCs;
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'TOGGLE_CONNECTION_STRATEGY_ERROR',
-          message: 'ConnectionsStrategiesService.toggle() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -331,10 +309,31 @@ export class ConnectionsStrategiesService {
     }
   }
 
-  async getCredentials(projectId: string, type: string) {
+  isOAuth2AuthData(data: AuthData): data is OAuth2AuthData {
+    return (
+      (data as OAuth2AuthData).CLIENT_ID !== undefined &&
+      (data as OAuth2AuthData).CLIENT_SECRET !== undefined
+    );
+  }
+
+  async getSafeCredentials(projectId: string, type: string) {
+    try {
+      const res = await this.getCredentials(projectId, type);
+
+      if (this.isOAuth2AuthData(res)) {
+        const { CLIENT_SECRET, ...safeData } = res;
+        return safeData;
+      }
+
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getCredentials(projectId: string, type: string): Promise<AuthData> {
     try {
       const isCustomCred = await this.isCustomCredentials(projectId, type);
-      console.log('inside get credentials...');
       const provider = extractProvider(type);
       const vertical = extractVertical(type);
       //TODO: extract sofwtaremode
@@ -364,18 +363,10 @@ export class ConnectionsStrategiesService {
           authStrategy,
           SoftwareMode.cloud,
         );
-        console.log('CONNECTION STRATEGY result is' + JSON.stringify(res));
         return res;
       }
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'GET_CREDENTIALS_ERROR',
-          message: 'ConnectionsStrategiesService.getCredentials() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -387,15 +378,7 @@ export class ConnectionsStrategiesService {
         },
       });
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'GET_CONNECTION_STRATEGIES_BY_PROJECT_ERROR',
-          message:
-            'ConnectionsStrategiesService.getConnectionStrategiesForProject() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -454,15 +437,7 @@ export class ConnectionsStrategiesService {
       }
       return cs;
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'UPDATE_CONNECTION_STRATEGY_ERROR',
-          message:
-            'ConnectionsStrategiesService.updateConnectionStrategy() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 
@@ -522,15 +497,7 @@ export class ConnectionsStrategiesService {
 
       return deleteCS;
     } catch (error) {
-      throwTypedError(
-        new ConnectionStrategiesError({
-          name: 'DELETE_CONNECTION_STRATEGY_ERROR',
-          message:
-            'ConnectionsStrategiesService.deleteConnectionStrategy() call failed',
-          cause: error,
-        }),
-        this.logger,
-      );
+      throw error;
     }
   }
 }
