@@ -21,6 +21,7 @@ services:
     volumes:
       - ./pg_data:/var/lib/postgresql/data
       - ./packages/api/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./packages/api/scripts/automatic_timestamps.sql:/docker-entrypoint-initdb.d/automatic_timestamps.sql
       - ./packages/api/scripts/seed.sql:/docker-entrypoint-initdb.d/seed.sql
     networks:
       - backend
@@ -235,22 +236,39 @@ services:
     volumes:
       - .:/app
 
-  #ngrok:
-    #image: ngrok/ngrok:latest
-    #restart: always
-    #command:
-     # - "start"
-     # - "--all"
-     # - "--config"
-     # - "/etc/ngrok.yml"
-    #volumes:
-     # - ./ngrok.yml:/etc/ngrok.yml
-    #ports:
-    #- 4040:4040
-    #depends_on:
-    #  api:
-    #    condition: service_healthy
-    #network_mode: "host"
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
+      PGADMIN_DEFAULT_PASSWORD: strong-password
+    networks:
+     - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: always
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+    - 4040:4040
+    depends_on:
+      api:
+        condition: service_healthy
+    network_mode: "host"
 
   docs:
     build:
@@ -260,6 +278,10 @@ services:
       - 911:3000
     volumes:
       - ./docs/:/app
+
+volumes:
+  local_pgdata:
+  pgadmin-data:
 
 networks:
   frontend:

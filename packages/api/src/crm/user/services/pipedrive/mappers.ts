@@ -4,7 +4,7 @@ import {
   UnifiedUserOutput,
 } from '@crm/user/types/model.unified';
 import { IUserMapper } from '@crm/user/types';
-import { MappersRegistry } from '@@core/utils/registry/mappings.registry';
+import { MappersRegistry } from '@@core/@core-services/registries/mappers.registry';
 import { Injectable } from '@nestjs/common';
 import { Utils } from '@crm/@lib/@utils';
 
@@ -39,25 +39,33 @@ export class PipedriveUserMapper implements IUserMapper {
     return result;
   }
 
-  unify(
+  async unify(
     source: PipedriveUserOutput | PipedriveUserOutput[],
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
     }[],
-  ): UnifiedUserOutput | UnifiedUserOutput[] {
+  ): Promise<UnifiedUserOutput | UnifiedUserOutput[]> {
     if (!Array.isArray(source)) {
-      return this.mapSingleUserToUnified(source, customFieldMappings);
+      return this.mapSingleUserToUnified(
+        source,
+        connectionId,
+        customFieldMappings,
+      );
     }
 
     // Handling array of PipedriveUserOutput
-    return source.map((user) =>
-      this.mapSingleUserToUnified(user, customFieldMappings),
+    return Promise.all(
+      source.map((user) =>
+        this.mapSingleUserToUnified(user, connectionId, customFieldMappings),
+      ),
     );
   }
 
   private mapSingleUserToUnified(
     user: PipedriveUserOutput,
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -72,6 +80,7 @@ export class PipedriveUserMapper implements IUserMapper {
 
     return {
       remote_id: String(user.id),
+      remote_data: user,
       name: user.name,
       email: user.email,
       field_mappings,

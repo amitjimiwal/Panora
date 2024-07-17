@@ -6,7 +6,7 @@ import {
 import { IContactMapper } from '@crm/contact/types';
 import { ZohoContactInput, ZohoContactOutput } from './types';
 import { Utils } from '@crm/@lib/@utils';
-import { MappersRegistry } from '@@core/utils/registry/mappings.registry';
+import { MappersRegistry } from '@@core/@core-services/registries/mappers.registry';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -32,8 +32,11 @@ export class ZohoContactMapper implements IContactMapper {
     if (primaryEmail) {
       result.Email = primaryEmail;
     }
-    if (primaryPhone) {
+    if (primaryPhone && source.phone_numbers?.[0]?.phone_type == 'WORK') {
       result.Phone = primaryPhone;
+    }
+    if (primaryPhone && source.phone_numbers?.[0]?.phone_type == 'MOBILE') {
+      result.Mobile = primaryPhone;
     }
     if (source.addresses && source.addresses[0]) {
       result.Mailing_Street = source.addresses[0].street_1;
@@ -58,25 +61,35 @@ export class ZohoContactMapper implements IContactMapper {
 
   async unify(
     source: ZohoContactOutput | ZohoContactOutput[],
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
     }[],
   ): Promise<UnifiedContactOutput | UnifiedContactOutput[]> {
     if (!Array.isArray(source)) {
-      return this.mapSingleContactToUnified(source, customFieldMappings);
+      return this.mapSingleContactToUnified(
+        source,
+        connectionId,
+        customFieldMappings,
+      );
     }
 
     // Handling array of HubspotContactOutput
     return Promise.all(
       source.map((contact) =>
-        this.mapSingleContactToUnified(contact, customFieldMappings),
+        this.mapSingleContactToUnified(
+          contact,
+          connectionId,
+          customFieldMappings,
+        ),
       ),
     );
   }
 
   private async mapSingleContactToUnified(
     contact: ZohoContactOutput,
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -91,7 +104,7 @@ export class ZohoContactMapper implements IContactMapper {
     // Constructing email and phone details
     const email_addresses =
       contact && contact.Email
-        ? [{ email_address: contact.Email, email_address_type: 'primary' }]
+        ? [{ email_address: contact.Email, email_address_type: 'PERSONAL' }]
         : [];
 
     const phone_numbers = [];
@@ -99,13 +112,13 @@ export class ZohoContactMapper implements IContactMapper {
     if (contact && contact.Phone) {
       phone_numbers.push({
         phone_number: contact.Phone,
-        phone_type: 'work',
+        phone_type: 'WORK',
       });
     }
     if (contact && contact.Mobile) {
       phone_numbers.push({
         phone_number: contact.Mobile,
-        phone_type: 'mobile',
+        phone_type: 'MOBILE',
       });
     }
     if (contact && contact.Fax) {
@@ -129,17 +142,23 @@ export class ZohoContactMapper implements IContactMapper {
       country: contact.Mailing_Country,
     };
 
+    const opts: any = {};
+    if (contact.Owner && contact.Owner.id) {
+      opts.user_id = await this.utils.getUserUuidFromRemoteId(
+        contact.Owner.id,
+        connectionId,
+      );
+    }
+
     return {
       remote_id: String(contact.id),
-      first_name: contact.First_Name ? contact.First_Name : '',
-      last_name: contact.Last_Name ? contact.Last_Name : '',
+      remote_data: contact,
+      first_name: contact.First_Name ?? null,
+      last_name: contact.Last_Name ?? null,
       email_addresses,
       phone_numbers,
       field_mappings,
-      user_id: await this.utils.getUserUuidFromRemoteId(
-        contact.Owner.id,
-        'zoho',
-      ),
+      ...opts,
       addresses: [address],
     };
   }

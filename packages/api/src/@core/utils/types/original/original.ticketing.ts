@@ -29,10 +29,6 @@ import {
   GithubTicketOutput,
 } from '@ticketing/ticket/services/github/types';
 import {
-  HubspotTicketInput,
-  HubspotTicketOutput,
-} from '@ticketing/ticket/services/hubspot/types';
-import {
   FrontUserInput,
   FrontUserOutput,
 } from '@ticketing/user/services/front/types';
@@ -126,6 +122,10 @@ import {
   GitlabCommentInput,
   GitlabCommentOutput,
 } from '@ticketing/comment/services/gitlab/types';
+import {
+  GitlabTagInput,
+  GitlabTagOutput,
+} from '@ticketing/tag/services/gitlab/types';
 
 /* INPUT */
 
@@ -134,7 +134,6 @@ export type OriginalTicketInput =
   | ZendeskTicketInput
   | FrontTicketInput
   | GithubTicketInput
-  | HubspotTicketInput
   | GorgiasTicketInput
   | JiraTicketInput
   | GitlabTicketInput;
@@ -168,7 +167,8 @@ export type OriginalTagInput =
   | ZendeskTagInput
   | FrontTagInput
   | GorgiasTagInput
-  | JiraTagInput;
+  | JiraTagInput
+  | GitlabTagInput;
 
 /* team */
 export type OriginalTeamInput =
@@ -201,7 +201,6 @@ export type OriginalTicketOutput =
   | ZendeskTicketOutput
   | FrontTicketOutput
   | GithubTicketOutput
-  | HubspotTicketOutput
   | GorgiasTicketOutput
   | JiraTicketOutput
   | GitlabTicketOutput;
@@ -232,7 +231,8 @@ export type OriginalTagOutput =
   | ZendeskTagOutput
   | FrontTagOutput
   | GorgiasTagOutput
-  | JiraTagOutput;
+  | JiraTagOutput
+  | GitlabTagOutput;
 
 /* team */
 export type OriginalTeamOutput =

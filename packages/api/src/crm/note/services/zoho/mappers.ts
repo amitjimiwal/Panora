@@ -5,7 +5,7 @@ import {
 } from '@crm/note/types/model.unified';
 import { INoteMapper } from '@crm/note/types';
 import { Utils } from '@crm/@lib/@utils';
-import { MappersRegistry } from '@@core/utils/registry/mappings.registry';
+import { MappersRegistry } from '@@core/@core-services/registries/mappers.registry';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -35,16 +35,15 @@ export class ZohoNoteMapper implements INoteMapper {
           api_name: 'Contacts',
           id: await this.utils.getRemoteIdFromContactUuid(source.contact_id),
         }
-      : { api_name: '', id: '' };
+      : { api_name: null, id: null };
 
     const result: ZohoNoteInput = {
       Note_Content: source.content,
       Parent_Id: {
         module: {
           api_name: module.api_name,
-          id: module.id,
         },
-        id: '', // todo
+        id: module.id,
       },
     };
 
@@ -64,24 +63,30 @@ export class ZohoNoteMapper implements INoteMapper {
 
   async unify(
     source: ZohoNoteOutput | ZohoNoteOutput[],
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
     }[],
   ): Promise<UnifiedNoteOutput | UnifiedNoteOutput[]> {
     if (!Array.isArray(source)) {
-      return await this.mapSingleNoteToUnified(source, customFieldMappings);
+      return await this.mapSingleNoteToUnified(
+        source,
+        connectionId,
+        customFieldMappings,
+      );
     }
 
     return Promise.all(
       source.map((note) =>
-        this.mapSingleNoteToUnified(note, customFieldMappings),
+        this.mapSingleNoteToUnified(note, connectionId, customFieldMappings),
       ),
     );
   }
 
   private async mapSingleNoteToUnified(
     note: ZohoNoteOutput,
+    connectionId: string,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -96,25 +101,36 @@ export class ZohoNoteMapper implements INoteMapper {
 
     const res: UnifiedNoteOutput = {
       remote_id: note.id,
+      remote_data: note,
       content: note.Note_Content,
       field_mappings,
     };
 
-    const module = note.Parent_Id.module;
-    if (module.api_name === 'Deals' && module.id) {
-      res.deal_id = await this.utils.getDealUuidFromRemoteId(module.id, 'zoho');
-    }
-    if (module.api_name === 'Accounts' && module.id) {
-      res.company_id = await this.utils.getCompanyUuidFromRemoteId(
+    const module = note.Parent_Id;
+    if (module && module.id) {
+      const a = await this.utils.getDealUuidFromRemoteId(
         module.id,
-        'zoho',
+        connectionId,
       );
-    }
-    if (module.api_name === 'Contacts' && module.id) {
-      res.contact_id = await this.utils.getContactUuidFromRemoteId(
-        module.id,
-        'zoho',
-      );
+      if (a) {
+        res.deal_id = a;
+      } else {
+        const b = await this.utils.getCompanyUuidFromRemoteId(
+          module.id,
+          connectionId,
+        );
+        if (b) {
+          res.company_id = b;
+        } else {
+          const c = await this.utils.getContactUuidFromRemoteId(
+            module.id,
+            connectionId,
+          );
+          if (c) {
+            res.contact_id = c;
+          }
+        }
+      }
     }
 
     return res;
