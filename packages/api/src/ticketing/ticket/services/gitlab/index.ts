@@ -36,11 +36,14 @@ export class GitlabService implements ITicketService {
           vertical: 'ticketing',
         },
       });
-      const dataBody = ticketData;
+      const { comment, ...ticketD } = ticketData;
+      const DATA = {
+        ...ticketD,
+      };
 
       const resp = await axios.post(
-        `${connection.account_url}/projects/${ticketData.project_id}/issues`,
-        JSON.stringify(dataBody),
+        `${connection.account_url}/v4/projects/${ticketData.project_id}/issues`,
+        JSON.stringify(DATA),
         {
           headers: {
             'Content-Type': 'application/json',
@@ -50,6 +53,21 @@ export class GitlabService implements ITicketService {
           },
         },
       );
+      //insert comment
+      if (comment) {
+        const resp_ = await axios.post(
+          `${connection.account_url}/v4/projects/${ticketData.project_id}/issues/${resp.data.iid}/notes`,
+          JSON.stringify(comment),
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.cryptoService.decrypt(
+                connection.access_token,
+              )}`,
+            },
+          },
+        );
+      }
       return {
         data: resp.data,
         message: 'Gitlab ticket created',
@@ -72,7 +90,7 @@ export class GitlabService implements ITicketService {
       });
 
       const resp = await axios.get(
-        `${connection.account_url}/issues?scope=created_by_me&scope=assigned_to_me`,
+        `${connection.account_url}/v4/issues?scope=created_by_me&scope=assigned_to_me`,
         {
           headers: {
             'Content-Type': 'application/json',

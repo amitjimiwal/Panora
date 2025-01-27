@@ -1,18 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { EncryptionService } from '@@core/@core-services/encryption/encryption.service';
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
-import { EncryptionService } from '@@core/@core-services/encryption/encryption.service';
 import { ApiResponse } from '@@core/utils/types';
-import axios from 'axios';
-import { ActionType, handle3rdPartyServiceError } from '@@core/utils/errors';
-import { ICommentService } from '@ticketing/comment/types';
-import { TicketingObject } from '@ticketing/@lib/@types';
-import { JiraCommentInput, JiraCommentOutput } from './types';
-import { ServiceRegistry } from '../registry.service';
-import { Utils } from '@ticketing/@lib/@utils';
 import { SyncParam } from '@@core/utils/types/interface';
+import { Injectable } from '@nestjs/common';
+import { TicketingObject } from '@ticketing/@lib/@types';
+import { Utils } from '@ticketing/@lib/@utils';
+import { ICommentService } from '@ticketing/comment/types';
+import axios from 'axios';
 import * as FormData from 'form-data';
 import * as fs from 'fs';
+import { ServiceRegistry } from '../registry.service';
+import { JiraCommentInput, JiraCommentOutput } from './types';
 
 @Injectable()
 export class JiraService implements ICommentService {
@@ -45,7 +44,7 @@ export class JiraService implements ICommentService {
 
       // Send request without attachments
       const resp = await axios.post(
-        `${connection.account_url}/issue/${remoteIdTicket}/comment`,
+        `${connection.account_url}/3/issue/${remoteIdTicket}/comment`,
         JSON.stringify(commentData),
         {
           headers: {
@@ -93,7 +92,7 @@ export class JiraService implements ICommentService {
 
         // Send request with attachments
         const resp_ = await axios.post(
-          `${connection.account_url}/issue/${remoteIdTicket}/attachments`,
+          `${connection.account_url}/3/issue/${remoteIdTicket}/attachments`,
           formData,
           {
             headers: {
@@ -138,7 +137,7 @@ export class JiraService implements ICommentService {
         },
       });
       const resp = await axios.get(
-        `${connection.account_url}/issue/${ticket.remote_id}/comment`,
+        `${connection.account_url}/3/issue/${ticket.remote_id}/comment`,
         {
           headers: {
             'Content-Type': 'application/json',

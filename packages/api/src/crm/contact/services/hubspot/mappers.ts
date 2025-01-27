@@ -1,6 +1,6 @@
 import {
-  UnifiedContactInput,
-  UnifiedContactOutput,
+  UnifiedCrmContactInput,
+  UnifiedCrmContactOutput,
 } from '@crm/contact/types/model.unified';
 import { IContactMapper } from '@crm/contact/types';
 import { HubspotContactInput, HubspotContactOutput } from './types';
@@ -15,7 +15,7 @@ export class HubspotContactMapper implements IContactMapper {
   }
 
   async desunify(
-    source: UnifiedContactInput,
+    source: UnifiedCrmContactInput,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -80,7 +80,7 @@ export class HubspotContactMapper implements IContactMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedContactOutput | UnifiedContactOutput[]> {
+  ): Promise<UnifiedCrmContactOutput | UnifiedCrmContactOutput[]> {
     if (!Array.isArray(source)) {
       return this.mapSingleContactToUnified(
         source,
@@ -105,7 +105,7 @@ export class HubspotContactMapper implements IContactMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): UnifiedContactOutput {
+  ): UnifiedCrmContactOutput {
     const field_mappings: { [key: string]: any } = {};
     if (customFieldMappings) {
       for (const mapping of customFieldMappings) {
@@ -143,14 +143,14 @@ export class HubspotContactMapper implements IContactMapper {
       email_addresses: [
         {
           email_address: contact.properties.email,
-          email_address_type: 'primary',
+          email_address_type: 'PERSONAL',
           owner_type: 'contact',
         },
       ],
       phone_numbers: [
         {
           phone_number: contact.properties.phone,
-          phone_type: 'primary',
+          phone_type: 'PERSONAL',
           owner_type: 'contact',
         },
       ],

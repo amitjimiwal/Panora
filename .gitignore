@@ -13,3 +13,5 @@ redis_data
 .pnpm-store/
 .npmrc
 .vscode
+docs/objects
+.magicodeignore

@@ -1,16 +1,6 @@
-import { CrmObject, UnifiedCrm } from '@crm/@lib/@types';
-import { HrisObject, UnifiedHris } from '@hris/@lib/@types';
-import { AtsObject, UnifiedAts } from '@ats/@lib/@types';
 import { AccountingObject, UnifiedAccounting } from '@accounting/@lib/@types';
-import { TicketingObject, UnifiedTicketing } from '@ticketing/@lib/@types';
-import {
-  ApiExtraModels,
-  ApiOkResponse,
-  ApiProperty,
-  ApiPropertyOptional,
-  getSchemaPath,
-} from '@nestjs/swagger';
-import { Type, applyDecorators } from '@nestjs/common';
+import { CrmObject, UnifiedCrm } from '@crm/@lib/@types';
+import { EcommerceObject, UnifiedEcommerce } from '@ecommerce/@lib/@types';
 import {
   FileStorageObject,
   UnifiedFileStorage,
@@ -19,30 +9,29 @@ import {
   MarketingAutomationObject,
   UnifiedMarketingAutomation,
 } from '@marketingautomation/@lib/@types';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TicketingObject, UnifiedTicketing } from '@ticketing/@lib/@types';
 
 export type Unified =
   | UnifiedCrm
   | UnifiedTicketing
   | UnifiedFileStorage
   | UnifiedMarketingAutomation
-  | UnifiedAts
-  | UnifiedHris
-  | UnifiedAccounting;
+  | UnifiedAccounting
+  | UnifiedEcommerce;
 
 export type UnifyReturnType = Unified | Unified[];
 
 export type TargetObject =
   | CrmObject
-  | HrisObject
-  | AtsObject
   | AccountingObject
   | FileStorageObject
   | MarketingAutomationObject
-  | TicketingObject;
+  | TicketingObject
+  | EcommerceObject;
 
 export type StandardObject = TargetObject;
 
-//API RESPONSE
 export class ApiResponse<T> {
   data: T;
   @ApiPropertyOptional()
@@ -53,31 +42,28 @@ export class ApiResponse<T> {
   statusCode: number;
 }
 
-export const ApiCustomResponse = <DataDto extends Type<unknown>>(
-  dataDto: DataDto,
-) =>
-  applyDecorators(
-    ApiExtraModels(ApiResponse, dataDto),
-    ApiOkResponse({
-      schema: {
-        allOf: [
-          { $ref: getSchemaPath(ApiResponse) },
-          {
-            properties: {
-              data: { $ref: getSchemaPath(dataDto) },
-            },
-          },
-        ],
-      },
-    }),
-  );
-
 export function getFileExtension(fileName: string): string | null {
   const parts = fileName.split('.');
   if (parts.length > 1) {
     return '.' + parts.pop()!.toLowerCase();
   }
   return null;
+}
+
+export function getFileExtensionFromMimeType(
+  mimeType: string,
+): string | undefined {
+  try {
+    const normalizedMimeType = mimeType.toLowerCase();
+    for (const [extension, mime] of Object.entries(MIME_TYPES)) {
+      if (mime.toLowerCase() === normalizedMimeType) {
+        return extension.startsWith('.') ? extension.slice(1) : extension;
+      }
+    }
+    return undefined;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export const MIME_TYPES: { [key: string]: string } = {
@@ -120,6 +106,7 @@ export const MIME_TYPES: { [key: string]: string } = {
   '.mp4': 'video/mp4',
   '.mpeg': 'video/mpeg',
   '.mpkg': 'application/vnd.apple.installer+xml',
+  '.md': 'text/markdown',
   '.odp': 'application/vnd.oasis.opendocument.presentation',
   '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
   '.odt': 'application/vnd.oasis.opendocument.text',
@@ -373,4 +360,169 @@ export function getCountryCode(countryName: string): string | null {
 
 export function getCountryName(countryCode: string): string | null {
   return CODE_TO_COUNTRY[countryCode] || null;
+}
+
+export enum CurrencyCode {
+  AED = 'AED',
+  AFN = 'AFN',
+  ALL = 'ALL',
+  AMD = 'AMD',
+  ANG = 'ANG',
+  AOA = 'AOA',
+  ARS = 'ARS',
+  AUD = 'AUD',
+  AWG = 'AWG',
+  AZN = 'AZN',
+  BAM = 'BAM',
+  BBD = 'BBD',
+  BDT = 'BDT',
+  BGN = 'BGN',
+  BHD = 'BHD',
+  BIF = 'BIF',
+  BMD = 'BMD',
+  BND = 'BND',
+  BOB = 'BOB',
+  BRL = 'BRL',
+  BSD = 'BSD',
+  BTN = 'BTN',
+  BWP = 'BWP',
+  BYN = 'BYN',
+  BZD = 'BZD',
+  CAD = 'CAD',
+  CDF = 'CDF',
+  CHF = 'CHF',
+  CLP = 'CLP',
+  CNY = 'CNY',
+  COP = 'COP',
+  CRC = 'CRC',
+  CUP = 'CUP',
+  CVE = 'CVE',
+  CZK = 'CZK',
+  DJF = 'DJF',
+  DKK = 'DKK',
+  DOP = 'DOP',
+  DZD = 'DZD',
+  EGP = 'EGP',
+  ERN = 'ERN',
+  ETB = 'ETB',
+  EUR = 'EUR',
+  FJD = 'FJD',
+  FKP = 'FKP',
+  FOK = 'FOK',
+  GBP = 'GBP',
+  GEL = 'GEL',
+  GGP = 'GGP',
+  GHS = 'GHS',
+  GIP = 'GIP',
+  GMD = 'GMD',
+  GNF = 'GNF',
+  GTQ = 'GTQ',
+  GYD = 'GYD',
+  HKD = 'HKD',
+  HNL = 'HNL',
+  HRK = 'HRK',
+  HTG = 'HTG',
+  HUF = 'HUF',
+  IDR = 'IDR',
+  ILS = 'ILS',
+  IMP = 'IMP',
+  INR = 'INR',
+  IQD = 'IQD',
+  IRR = 'IRR',
+  ISK = 'ISK',
+  JEP = 'JEP',
+  JMD = 'JMD',
+  JOD = 'JOD',
+  JPY = 'JPY',
+  KES = 'KES',
+  KGS = 'KGS',
+  KHR = 'KHR',
+  KID = 'KID',
+  KMF = 'KMF',
+  KRW = 'KRW',
+  KWD = 'KWD',
+  KYD = 'KYD',
+  KZT = 'KZT',
+  LAK = 'LAK',
+  LBP = 'LBP',
+  LKR = 'LKR',
+  LRD = 'LRD',
+  LSL = 'LSL',
+  LYD = 'LYD',
+  MAD = 'MAD',
+  MDL = 'MDL',
+  MGA = 'MGA',
+  MKD = 'MKD',
+  MMK = 'MMK',
+  MNT = 'MNT',
+  MOP = 'MOP',
+  MRU = 'MRU',
+  MUR = 'MUR',
+  MVR = 'MVR',
+  MWK = 'MWK',
+  MXN = 'MXN',
+  MYR = 'MYR',
+  MZN = 'MZN',
+  NAD = 'NAD',
+  NGN = 'NGN',
+  NIO = 'NIO',
+  NOK = 'NOK',
+  NPR = 'NPR',
+  NZD = 'NZD',
+  OMR = 'OMR',
+  PAB = 'PAB',
+  PEN = 'PEN',
+  PGK = 'PGK',
+  PHP = 'PHP',
+  PKR = 'PKR',
+  PLN = 'PLN',
+  PYG = 'PYG',
+  QAR = 'QAR',
+  RON = 'RON',
+  RSD = 'RSD',
+  RUB = 'RUB',
+  RWF = 'RWF',
+  SAR = 'SAR',
+  SBD = 'SBD',
+  SCR = 'SCR',
+  SDG = 'SDG',
+  SEK = 'SEK',
+  SGD = 'SGD',
+  SHP = 'SHP',
+  SLE = 'SLE',
+  SLL = 'SLL',
+  SOS = 'SOS',
+  SRD = 'SRD',
+  SSP = 'SSP',
+  STN = 'STN',
+  SYP = 'SYP',
+  SZL = 'SZL',
+  THB = 'THB',
+  TJS = 'TJS',
+  TMT = 'TMT',
+  TND = 'TND',
+  TOP = 'TOP',
+  TRY = 'TRY',
+  TTD = 'TTD',
+  TVD = 'TVD',
+  TWD = 'TWD',
+  TZS = 'TZS',
+  UAH = 'UAH',
+  UGX = 'UGX',
+  USD = 'USD',
+  UYU = 'UYU',
+  UZS = 'UZS',
+  VES = 'VES',
+  VND = 'VND',
+  VUV = 'VUV',
+  WST = 'WST',
+  XAF = 'XAF',
+  XCD = 'XCD',
+  XDR = 'XDR',
+  XOF = 'XOF',
+  XPF = 'XPF',
+  YER = 'YER',
+  ZAR = 'ZAR',
+  ZMW = 'ZMW',
+  ZWL = 'ZWL',
 }

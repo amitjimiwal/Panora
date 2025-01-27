@@ -1,15 +1,15 @@
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
 import { CoreSyncRegistry } from '@@core/@core-services/registries/core-sync.registry';
-import { IBaseSync, SyncLinkedUserType } from '@@core/utils/types/interface';
-import { Injectable } from '@nestjs/common';
+import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
+import { IBaseSync } from '@@core/utils/types/interface';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { tcg_attachments as TicketingAttachment } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { UnifiedAttachmentOutput } from '../types/model.unified';
-import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
+import { UnifiedTicketingAttachmentOutput } from '../types/model.unified';
 
 @Injectable()
-export class SyncService implements IBaseSync {
+export class SyncService implements OnModuleInit, IBaseSync {
   constructor(
     private prisma: PrismaService,
     private logger: LoggerService,
@@ -19,14 +19,21 @@ export class SyncService implements IBaseSync {
     this.logger.setContext(SyncService.name);
     this.registry.registerService('ticketing', 'attachment', this);
   }
+  onModuleInit() {
+    //
+  }
 
   // we don't sync here as it is done within the Comment & Ticket Sync services
   // we only save to the db
 
+  async kickstartSync(id_project?: string) {
+    return;
+  }
+
   async saveToDb(
     connection_id: string,
     linkedUserId: string,
-    data: UnifiedAttachmentOutput[],
+    data: UnifiedTicketingAttachmentOutput[],
     originSource: string,
     remote_data: Record<string, any>[],
     extra: {
@@ -38,7 +45,7 @@ export class SyncService implements IBaseSync {
       const attachments_results: TicketingAttachment[] = [];
 
       const updateOrCreateAttachment = async (
-        attachment: UnifiedAttachmentOutput,
+        attachment: UnifiedTicketingAttachmentOutput,
         originId: string,
         connection_id: string,
       ) => {

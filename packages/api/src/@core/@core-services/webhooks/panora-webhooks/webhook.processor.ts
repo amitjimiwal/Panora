@@ -1,11 +1,11 @@
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
+import { Queues } from '@@core/@core-services/queues/types';
 import { OnQueueActive, Process, Processor } from '@nestjs/bull';
 import axios from 'axios';
 import { Job } from 'bull';
 import { v4 as uuidv4 } from 'uuid';
 import { WebhookService } from './webhook.service';
-import { Queues } from '@@core/@core-services/queues/types';
 
 @Processor(Queues.PANORA_WEBHOOKS_SENDER)
 export class WebhookProcessor {
@@ -45,28 +45,45 @@ export class WebhookProcessor {
         },
       });
 
+    const event = await this.prisma.events.findUnique({
+      where: {
+        id_event: deliveryAttempt.id_event,
+      },
+    });
+
     // Check if the endpoint is active
     if (deliveryAttempt.webhook_endpoints.active) {
       try {
         // Send the payload to the endpoint URL
-        const response = await axios.post(
-          deliveryAttempt.webhook_endpoints.url,
-          {
-            id_event: deliveryAttempt.id_event,
-            data: deliveryAttempt.webhooks_payloads.data,
-          },
-          {
-            headers: {
-              'Panora-Signature': deliveryAttempt.webhook_endpoints.secret,
-            },
-          },
+        //create a signature
+        const signature = this.webhookService.generateSignature(
+          deliveryAttempt.webhooks_payloads.data,
+          deliveryAttempt.webhook_endpoints.secret,
         );
+        let response;
+        try {
+          response = await axios.post(
+            deliveryAttempt.webhook_endpoints.url,
+            {
+              id_event: deliveryAttempt.id_event,
+              data: deliveryAttempt.webhooks_payloads.data,
+              type: event.type,
+            },
+            {
+              headers: {
+                'Panora-Signature': signature,
+              },
+            },
+          );
+        } catch (error) {
+          throw error;
+        }
 
         // Populate the webhooks_responses table
         await this.prisma.webhooks_reponses.create({
           data: {
             id_webhooks_reponse: uuidv4(),
-            http_response_data: response.data,
+            http_response_data: JSON.stringify(response.data),
             http_status_code: response.status.toString(),
           },
         });
@@ -79,8 +96,8 @@ export class WebhookProcessor {
 
         this.logger.log('Webhook delivered !');
       } catch (error) {
-        // If the POST request fails, set a next retry time and reinsert the job in the queue
-        const nextRetry = new Date();
+        // TODO: If the POST request fails, set a next retry time and reinsert the job in the queue
+        /*const nextRetry = new Date();
         nextRetry.setSeconds(nextRetry.getSeconds() + 60); // Retry after 60 seconds
 
         await this.prisma.webhook_delivery_attempts.update({
@@ -92,10 +109,10 @@ export class WebhookProcessor {
         });
 
         //re-insert the webhook in the queue
-        await this.webhookService.dispatchFailedWebhook(id_webhook_delivery);
+        await this.webhookService.dispatchFailedWebhook(id_webhook_delivery);*/
 
         this.logger.log(
-          'Webhook delivery failed. Job reinserted in the queue for retry.',
+          `Webhook delivery failed. Job reinserted in the queue for retry : ${error}`,
         );
       }
     } else {

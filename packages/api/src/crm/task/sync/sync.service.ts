@@ -8,7 +8,7 @@ import { FieldMappingService } from '@@core/field-mapping/field-mapping.service'
 import { ServiceRegistry } from '../services/registry.service';
 import { CrmObject } from '@crm/@lib/@types';
 import { WebhookService } from '@@core/@core-services/webhooks/panora-webhooks/webhook.service';
-import { UnifiedTaskOutput } from '../types/model.unified';
+import { UnifiedCrmTaskOutput } from '../types/model.unified';
 import { ITaskService } from '../types';
 import { crm_tasks as CrmTask } from '@prisma/client';
 import { OriginalTaskOutput } from '@@core/utils/types/original/original.crm';
@@ -36,67 +36,38 @@ export class SyncService implements OnModuleInit, IBaseSync {
     this.logger.setContext(SyncService.name);
     this.registry.registerService('crm', 'task', this);
   }
-
-  async onModuleInit() {
-    try {
-      await this.bullQueueService.queueSyncJob('crm-sync-tasks', '0 0 * * *');
-    } catch (error) {
-      throw error;
-    }
+  onModuleInit() {
+//
   }
 
   //function used by sync worker which populate our crm_tasks table
   //its role is to fetch all tasks from providers 3rd parties and save the info inside our db
   //@Cron('*/2 * * * *') // every 2 minutes (for testing)
   @Cron('0 */8 * * *') // every 8 hours
-  async kickstartSync(user_id?: string) {
+  async kickstartSync(id_project?: string) {
     try {
-      this.logger.log(`Syncing tasks....`);
-      const users = user_id
-        ? [
-            await this.prisma.users.findUnique({
-              where: {
-                id_user: user_id,
-              },
-            }),
-          ]
-        : await this.prisma.users.findMany();
-      if (users && users.length > 0) {
-        for (const user of users) {
-          const projects = await this.prisma.projects.findMany({
-            where: {
-              id_user: user.id_user,
-            },
-          });
-          for (const project of projects) {
-            const id_project = project.id_project;
-            const linkedUsers = await this.prisma.linked_users.findMany({
-              where: {
-                id_project: id_project,
-              },
-            });
-            linkedUsers.map(async (linkedUser) => {
-              try {
-                const providers = CRM_PROVIDERS.filter(
-                  (provider) => provider !== 'zoho',
-                );
-                for (const provider of providers) {
-                  try {
-                    await this.syncForLinkedUser({
-                      integrationId: provider,
-                      linkedUserId: linkedUser.id_linked_user,
-                    });
-                  } catch (error) {
-                    throw error;
-                  }
-                }
-              } catch (error) {
-                throw error;
-              }
-            });
+      const linkedUsers = await this.prisma.linked_users.findMany({
+        where: {
+          id_project: id_project,
+        },
+      });
+      linkedUsers.map(async (linkedUser) => {
+        try {
+          const providers = CRM_PROVIDERS;
+          for (const provider of providers) {
+            try {
+              await this.syncForLinkedUser({
+                integrationId: provider,
+                linkedUserId: linkedUser.id_linked_user,
+              });
+            } catch (error) {
+              throw error;
+            }
           }
+        } catch (error) {
+          throw error;
         }
-      }
+      });
     } catch (error) {
       throw error;
     }
@@ -108,10 +79,15 @@ export class SyncService implements OnModuleInit, IBaseSync {
       const { integrationId, linkedUserId } = param;
       const service: ITaskService =
         this.serviceRegistry.getService(integrationId);
-      if (!service) return;
+      if (!service) {
+        this.logger.log(
+          `No service found in {vertical:crm, commonObject: task} for integration ID: ${integrationId}`,
+        );
+        return;
+      }
 
       await this.ingestService.syncForLinkedUser<
-        UnifiedTaskOutput,
+        UnifiedCrmTaskOutput,
         OriginalTaskOutput,
         ITaskService
       >(integrationId, linkedUserId, 'crm', 'task', service, []);
@@ -123,7 +99,7 @@ export class SyncService implements OnModuleInit, IBaseSync {
   async saveToDb(
     connection_id: string,
     linkedUserId: string,
-    data: UnifiedTaskOutput[],
+    data: UnifiedCrmTaskOutput[],
     originSource: string,
     remote_data: Record<string, any>[],
   ): Promise<CrmTask[]> {
@@ -131,7 +107,7 @@ export class SyncService implements OnModuleInit, IBaseSync {
       const tasks_results: CrmTask[] = [];
 
       const updateOrCreateTask = async (
-        task: UnifiedTaskOutput,
+        task: UnifiedCrmTaskOutput,
         originId: string,
       ) => {
         let existingTask;

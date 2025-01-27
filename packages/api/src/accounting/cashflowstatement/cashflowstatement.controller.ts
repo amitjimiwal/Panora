@@ -8,6 +8,8 @@ import {
   Param,
   Headers,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import {
@@ -17,19 +19,24 @@ import {
   ApiQuery,
   ApiTags,
   ApiHeader,
+  //ApiKeyAuth,
 } from '@nestjs/swagger';
-import { ApiCustomResponse } from '@@core/utils/types';
+
 import { CashflowStatementService } from './services/cashflowstatement.service';
 import {
-  UnifiedCashflowStatementInput,
-  UnifiedCashflowStatementOutput,
+  UnifiedAccountingCashflowstatementInput,
+  UnifiedAccountingCashflowstatementOutput,
 } from './types/model.unified';
 import { ConnectionUtils } from '@@core/connections/@utils';
 import { ApiKeyAuthGuard } from '@@core/auth/guards/api-key.guard';
-import { FetchObjectsQueryDto } from '@@core/utils/dtos/fetch-objects-query.dto';
+import { QueryDto } from '@@core/utils/dtos/query.dto';
+import {
+  ApiGetCustomResponse,
+  ApiPaginatedResponse,
+} from '@@core/utils/dtos/openapi.respone.dto';
 
-@ApiTags('accounting/cashflowstatement')
-@Controller('accounting/cashflowstatement')
+@ApiTags('accounting/cashflowstatements')
+@Controller('accounting/cashflowstatements')
 export class CashflowStatementController {
   constructor(
     private readonly cashflowstatementService: CashflowStatementService,
@@ -40,8 +47,8 @@ export class CashflowStatementController {
   }
 
   @ApiOperation({
-    operationId: 'getCashflowStatements',
-    summary: 'List a batch of CashflowStatements',
+    operationId: 'listAccountingCashflowStatement',
+    summary: 'List  CashflowStatements',
   })
   @ApiHeader({
     name: 'x-connection-token',
@@ -49,21 +56,23 @@ export class CashflowStatementController {
     description: 'The connection token',
     example: 'b008e199-eda9-4629-bd41-a01b6195864a',
   })
-  @ApiCustomResponse(UnifiedCashflowStatementOutput)
+  @ApiPaginatedResponse(UnifiedAccountingCashflowstatementOutput)
   @UseGuards(ApiKeyAuthGuard)
+  @UsePipes(new ValidationPipe({ transform: true, disableErrorMessages: true }))
   @Get()
   async getCashflowStatements(
     @Headers('x-connection-token') connection_token: string,
-    @Query() query: FetchObjectsQueryDto,
+    @Query() query: QueryDto,
   ) {
     try {
-      const { linkedUserId, remoteSource, connectionId } =
+      const { linkedUserId, remoteSource, connectionId, projectId } =
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
       const { remote_data, limit, cursor } = query;
       return this.cashflowstatementService.getCashflowStatements(
         connectionId,
+        projectId,
         remoteSource,
         linkedUserId,
         limit,
@@ -76,19 +85,21 @@ export class CashflowStatementController {
   }
 
   @ApiOperation({
-    operationId: 'getCashflowStatement',
-    summary: 'Retrieve a CashflowStatement',
+    operationId: 'retrieveAccountingCashflowStatement',
+    summary: 'Retrieve Cashflow Statements',
     description:
-      'Retrieve a cashflowstatement from any connected Accounting software',
+      'Retrieve Cashflow Statements from any connected Accounting software',
   })
   @ApiParam({
     name: 'id',
+    example: '801f9ede-c698-4e66-a7fc-48d19eebaa4f',
     required: true,
     type: String,
     description: 'id of the cashflowstatement you want to retrieve.',
   })
   @ApiQuery({
     name: 'remote_data',
+    example: false,
     required: false,
     type: Boolean,
     description:
@@ -100,7 +111,7 @@ export class CashflowStatementController {
     description: 'The connection token',
     example: 'b008e199-eda9-4629-bd41-a01b6195864a',
   })
-  @ApiCustomResponse(UnifiedCashflowStatementOutput)
+  @ApiGetCustomResponse(UnifiedAccountingCashflowstatementOutput)
   @UseGuards(ApiKeyAuthGuard)
   @Get(':id')
   async retrieve(
@@ -108,7 +119,7 @@ export class CashflowStatementController {
     @Param('id') id: string,
     @Query('remote_data') remote_data?: boolean,
   ) {
-    const { linkedUserId, remoteSource } =
+    const { linkedUserId, remoteSource, connectionId, projectId } =
       await this.connectionUtils.getConnectionMetadataFromConnectionToken(
         connection_token,
       );
@@ -116,6 +127,8 @@ export class CashflowStatementController {
       id,
       linkedUserId,
       remoteSource,
+      connectionId,
+      projectId,
       remote_data,
     );
   }

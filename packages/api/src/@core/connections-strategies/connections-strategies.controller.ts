@@ -8,7 +8,13 @@ import {
   Request,
 } from '@nestjs/common';
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiExcludeController,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ConnectionsStrategiesService } from './connections-strategies.service';
 import { CreateConnectionStrategyDto } from './dto/create-connections-strategies.dto';
 import { ToggleStrategyDto } from './dto/toggle.dto';
@@ -17,8 +23,9 @@ import { UpdateCSDto } from './dto/update-cs.dto';
 import { ConnectionStrategyCredentials } from './dto/get-connection-cs-credentials.dto';
 import { JwtAuthGuard } from '@@core/auth/guards/jwt-auth.guard';
 
-@ApiTags('connections-strategies')
-@Controller('connections-strategies')
+@ApiTags('connection_strategies')
+@ApiExcludeController()
+@Controller('connection_strategies')
 export class ConnectionsStrategiesController {
   constructor(
     private logger: LoggerService,
@@ -40,12 +47,13 @@ export class ConnectionsStrategiesController {
     @Body() connectionStrategyCreateDto: CreateConnectionStrategyDto,
   ) {
     const { id_project } = req.user;
-    const { type, attributes, values } = connectionStrategyCreateDto;
+    const { type, attributes, values, status } = connectionStrategyCreateDto;
     return await this.connectionsStrategiesService.createConnectionStrategy(
       id_project,
       type,
       attributes,
       values,
+      status,
     );
   }
 
@@ -116,13 +124,11 @@ export class ConnectionsStrategiesController {
     );
   }
 
-  //todo: ADMIN
   @ApiOperation({
     operationId: 'getCredentials',
     summary: 'Fetch credentials info needed for connections',
   })
   @ApiResponse({ status: 200 })
-  //@UseGuards(JwtAuthGuard)
   @Get('getCredentials')
   async getCredentials(
     @Query('projectId') projectId: string,

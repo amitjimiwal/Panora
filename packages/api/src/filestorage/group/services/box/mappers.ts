@@ -1,7 +1,7 @@
 import { BoxGroupInput, BoxGroupOutput } from './types';
 import {
-  UnifiedGroupInput,
-  UnifiedGroupOutput,
+  UnifiedFilestorageGroupInput,
+  UnifiedFilestorageGroupOutput,
 } from '@filestorage/group/types/model.unified';
 import { IGroupMapper } from '@filestorage/group/types';
 import { Utils } from '@filestorage/@lib/@utils';
@@ -15,7 +15,7 @@ export class BoxGroupMapper implements IGroupMapper {
   }
 
   async desunify(
-    source: UnifiedGroupInput,
+    source: UnifiedFilestorageGroupInput,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -31,7 +31,7 @@ export class BoxGroupMapper implements IGroupMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedGroupOutput | UnifiedGroupOutput[]> {
+  ): Promise<UnifiedFilestorageGroupOutput | UnifiedFilestorageGroupOutput[]> {
     if (!Array.isArray(source)) {
       return await this.mapSingleGroupToUnified(
         source,
@@ -54,7 +54,7 @@ export class BoxGroupMapper implements IGroupMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedGroupOutput> {
+  ): Promise<UnifiedFilestorageGroupOutput> {
     const field_mappings: { [key: string]: any } = {};
     if (customFieldMappings) {
       for (const mapping of customFieldMappings) {
@@ -64,7 +64,7 @@ export class BoxGroupMapper implements IGroupMapper {
     return {
       remote_id: group.id,
       name: group.name || null,
-      users: null,
+      users: [],
       remote_was_deleted: null,
       //created_at: group.created_at || null,
       //modified_at: group.modified_at || null,

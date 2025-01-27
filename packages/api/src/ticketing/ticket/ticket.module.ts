@@ -1,3 +1,7 @@
+import { LinearTicketMapper } from './services/linear/mappers';
+import { LinearService } from './services/linear';
+import { GithubTicketMapper } from './services/github/mappers';
+import { GithubService } from './services/github';
 import { BullQueueModule } from '@@core/@core-services/queues/queue.module';
 import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
 import { WebhookService } from '@@core/@core-services/webhooks/panora-webhooks/webhook.service';
@@ -5,8 +9,6 @@ import { Module } from '@nestjs/common';
 import { Utils } from '@ticketing/@lib/@utils';
 import { FrontService } from './services/front';
 import { FrontTicketMapper } from './services/front/mappers';
-import { GithubService } from './services/github';
-import { GithubTicketMapper } from './services/github/mappers';
 import { GitlabService } from './services/gitlab';
 import { GitlabTicketMapper } from './services/gitlab/mappers';
 import { GorgiasService } from './services/gorgias';
@@ -20,7 +22,6 @@ import { ZendeskTicketMapper } from './services/zendesk/mappers';
 import { SyncService } from './sync/sync.service';
 import { TicketController } from './ticket.controller';
 @Module({
-  imports: [BullQueueModule],
   controllers: [TicketController],
   providers: [
     TicketService,
@@ -32,17 +33,19 @@ import { TicketController } from './ticket.controller';
     /* PROVIDERS SERVICES */
     ZendeskService,
     FrontService,
-    GithubService,
     JiraService,
     GorgiasService,
     GitlabService,
     /* PROVIDERS MAPPERS */
     ZendeskTicketMapper,
     FrontTicketMapper,
-    GithubTicketMapper,
     JiraTicketMapper,
     GorgiasTicketMapper,
     GitlabTicketMapper,
+    GithubService,
+    GithubTicketMapper,
+    LinearService,
+    LinearTicketMapper,
   ],
   exports: [SyncService, ServiceRegistry, WebhookService, IngestDataService],
 })

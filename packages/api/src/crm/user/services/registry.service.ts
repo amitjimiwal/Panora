@@ -16,7 +16,7 @@ export class ServiceRegistry {
   getService(integrationId: string): IUserService {
     const service = this.serviceMap.get(integrationId);
     if (!service) {
-      throw new Error();
+      return null;
     }
     return service;
   }

@@ -27,10 +27,10 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
 ARG VITE_BACKEND_DOMAIN
-ARG VITE_FRONTEND_DOMAIN
+ARG VITE_WEBAPP_DOMAIN
 
 ENV VITE_BACKEND_DOMAIN="$VITE_BACKEND_DOMAIN"
-ENV VITE_FRONTEND_DOMAIN="$VITE_FRONTEND_DOMAIN"
+ENV VITE_WEBAPP_DOMAIN="$VITE_WEBAPP_DOMAIN"
 
 RUN corepack enable
 
@@ -47,12 +47,8 @@ COPY --from=builder ./app/out/full/ .
 RUN pnpm turbo run build --filter=magic-link...
 
 # ========================================================================
-FROM nginx:1.24-alpine3.17 as runner
+FROM nginx:1.27.2-alpine3.20-slim as runner
 
-#ARG VITE_BACKEND_DOMAIN
-#ARG VITE_FRONTEND_DOMAIN
-#ENV VITE_BACKEND_DOMAIN="$VITE_BACKEND_DOMAIN"
-#ENV VITE_FRONTEND_DOMAIN="$VITE_FRONTEND_DOMAIN"
 COPY --from=installer ./app/apps/magic-link/dist/ /usr/share/nginx/html
 COPY apps/magic-link/nginx.conf /etc/nginx/conf.d/default.conf
 

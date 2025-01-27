@@ -1,27 +1,33 @@
-import { LoggerService } from '@@core/@core-services/logger/logger.service';
-import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
-import { CategoryConnectionRegistry } from '@@core/@core-services/registries/connections-categories.registry';
-import { JwtAuthGuard } from '@@core/auth/guards/jwt-auth.guard';
-import { ConnectionsError } from '@@core/utils/errors';
 import {
-  Body,
   Controller,
   Get,
-  Param,
   Post,
   Query,
   Request,
   Res,
   UseGuards,
+  Body,
 } from '@nestjs/common';
 import {
-  ApiBody,
+  ApiTags,
   ApiOperation,
   ApiQuery,
   ApiResponse,
-  ApiTags,
+  ApiBody,
+  ApiExcludeEndpoint,
 } from '@nestjs/swagger';
 import { Response } from 'express';
+
+import { LoggerService } from '@@core/@core-services/logger/logger.service';
+import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
+import { CategoryConnectionRegistry } from '@@core/@core-services/registries/connections-categories.registry';
+import { ApiKeyAuthGuard } from '@@core/auth/guards/api-key.guard';
+import { JwtAuthGuard } from '@@core/auth/guards/jwt-auth.guard';
+import { CoreSyncService } from '@@core/sync/sync.service';
+import { ApiGetArrayCustomResponse } from '@@core/utils/dtos/openapi.respone.dto';
+import { ConnectionsError } from '@@core/utils/errors';
+import { AuthStrategy, CONNECTORS_METADATA } from '@panora/shared';
+import { Connection } from './@utils/types';
 
 export type StateDataType = {
   projectId: string;
@@ -29,6 +35,7 @@ export type StateDataType = {
   linkedUserId: string;
   providerName: string;
   returnUrl?: string;
+  [key: string]: any;
 };
 
 export class BodyDataType {
@@ -41,6 +48,7 @@ export class BodyDataType {
 export class ConnectionsController {
   constructor(
     private categoryConnectionRegistry: CategoryConnectionRegistry,
+    private coreSync: CoreSyncService,
     private logger: LoggerService,
     private prisma: PrismaService,
   ) {
@@ -54,14 +62,18 @@ export class ConnectionsController {
   @ApiQuery({ name: 'state', required: true, type: String })
   @ApiQuery({ name: 'code', required: true, type: String })
   @ApiResponse({ status: 200 })
+  @ApiExcludeEndpoint()
   @Get('oauth/callback')
   async handleOAuthCallback(@Res() res: Response, @Query() query: any) {
     try {
-      const { state, code, location } = query;
-      if (!code) {
+      const { state, code, spapi_oauth_code, ...otherQueryParams } = query;
+
+      if (!code && !spapi_oauth_code) {
         throw new ConnectionsError({
           name: 'OAUTH_CALLBACK_CODE_NOT_FOUND_ERROR',
-          message: `No Callback Params found for code, found ${code}`,
+          message: `No Callback Params found for code, found ${
+            code || spapi_oauth_code
+          }`,
         });
       }
 
@@ -72,69 +84,59 @@ export class ConnectionsController {
         });
       }
 
-      const stateData: StateDataType = JSON.parse(decodeURIComponent(state));
-      const { projectId, vertical, linkedUserId, providerName, returnUrl } =
-        stateData;
+      const stateData: StateDataType = this.parseStateData(state);
+
+      const {
+        projectId,
+        vertical,
+        linkedUserId,
+        providerName,
+        returnUrl,
+        ...dynamicStateParams
+      } = stateData;
 
       const service = this.categoryConnectionRegistry.getService(
         vertical.toLowerCase(),
       );
       await service.handleCallBack(
         providerName,
-        { linkedUserId, projectId, code, location },
-        'oauth',
+        {
+          linkedUserId,
+          projectId,
+          code,
+          spapi_oauth_code,
+          ...otherQueryParams,
+          ...dynamicStateParams,
+        },
+        'oauth2',
       );
 
-      res.redirect(returnUrl);
+      if (providerName === 'shopify') {
+        service.redirectUponConnection(res, ...otherQueryParams);
+      } else {
+        res.redirect(returnUrl);
+      }
 
-      /*if (
-        CONNECTORS_METADATA[vertical.toLowerCase()][providerName.toLowerCase()]
-          .active !== false
-      ) {
-        this.logger.log('triggering initial core sync for all objects...;');
-        // Performing Core Sync Service for active connectors
-        await this.coreSync.initialSync(
-          vertical.toLowerCase(),
-          providerName,
-          linkedUserId,
-        );
-      }*/
+      await this.triggerInitialCoreSync(vertical, providerName, linkedUserId);
     } catch (error) {
       throw error;
     }
   }
 
-  /*@Get('/gorgias/oauth/install')
-  handleGorgiasAuthUrl(
-    @Res() res: Response,
-    @Query('account') account: string,
-    @Query('response_type') response_type: string,
-    @Query('nonce') nonce: string,
-    @Query('scope') scope: string,
-    @Query('client_id') client_id: string,
-    @Query('redirect_uri') redirect_uri: string,
-    @Query('state') state: string,
-  ) {
-    try {
-      console.log(client_id)
-      if (!account) throw new ReferenceError('account prop not found');
-      const params = `?client_id=${client_id}&response_type=${response_type}&redirect_uri=${redirect_uri}&state=${state}&nonce=${nonce}&scope=${scope}`;
-      res.redirect(`https://${account}.gorgias.com/oauth/authorize${params}`);
-    } catch (error) {
-      throw error;
-    }
-  }*/
-
   @ApiOperation({
     operationId: 'handleApiKeyCallback',
-    summary: 'Capture api key callback',
+    summary: 'Capture api key or basic auth callback',
   })
+  @ApiExcludeEndpoint()
   @ApiQuery({ name: 'state', required: true, type: String })
   @ApiBody({ type: BodyDataType })
-  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201 })
-  @Post('apikey/callback')
-  async handleApiKeyCallback(@Query() query: any, @Body() body: BodyDataType) {
+  @Post('basicorapikey/callback')
+  async handleApiKeyCallback(
+    @Res() res: Response,
+    @Query() query: any,
+    @Body() body: BodyDataType,
+  ) {
     try {
       const { state } = query;
       if (!state) {
@@ -143,69 +145,98 @@ export class ConnectionsController {
           message: `No Callback Params found for state, found ${state}`,
         });
       }
+
       const stateData: StateDataType = JSON.parse(decodeURIComponent(state));
       const { projectId, vertical, linkedUserId, providerName } = stateData;
-      const { apikey, ...body_data } = body;
 
-      await this.categoryConnectionRegistry
-        .getService(vertical.toLowerCase())
-        .handleCallBack(
-          providerName,
-          {
-            projectId,
-            linkedUserId,
-            apikey,
-            body_data,
-          },
-          'apikey',
-        );
-      /*if (
+      const strategy =
         CONNECTORS_METADATA[vertical.toLowerCase()][providerName.toLowerCase()]
-          .active !== false
-      ) {
-        this.logger.log('triggering initial core sync for all objects...;');
-        // Performing Core Sync Service for active connectors
-        await this.coreSync.initialSync(
-          vertical.toLowerCase(),
-          providerName,
-          linkedUserId,
-        );
-      }*/
+          .authStrategy.strategy;
+      const strategy_type =
+        strategy === AuthStrategy.api_key ? 'apikey' : 'basic';
+
+      const service = this.categoryConnectionRegistry.getService(
+        vertical.toLowerCase(),
+      );
+      await service.handleCallBack(
+        providerName,
+        { projectId, linkedUserId, body },
+        strategy_type,
+      );
+
+      res.redirect('/');
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @ApiOperation({ operationId: 'getConnections', summary: 'List Connections' })
+  @ApiExcludeEndpoint()
+  @ApiResponse({ status: 200 })
+  @UseGuards(JwtAuthGuard)
+  @Get('internal')
+  async list_internal(@Request() req: any) {
+    try {
+      const { id_project } = req.user;
+      return await this.prisma.connections.findMany({
+        where: { id_project },
+      });
     } catch (error) {
       throw error;
     }
   }
 
   @ApiOperation({
-    operationId: 'list',
+    operationId: 'listConnections',
     summary: 'List Connections',
   })
-  @ApiResponse({ status: 200 })
-  @UseGuards(JwtAuthGuard)
+  @ApiGetArrayCustomResponse(Connection)
+  @UseGuards(ApiKeyAuthGuard)
   @Get()
   async list(@Request() req: any) {
     try {
       const { id_project } = req.user;
       return await this.prisma.connections.findMany({
-        where: {
-          id_project: id_project,
-        },
+        where: { id_project },
       });
     } catch (error) {
       throw error;
     }
   }
 
-  @Get('list')
-  async list2(@Query('projectid') req: string) {
-    try {
-      return await this.prisma.connections.findMany({
-        where: {
-          id_project: req,
-        },
-      });
-    } catch (error) {
-      throw error;
+  private parseStateData(state: string): StateDataType {
+    if (state.includes('&quot;') || state.includes('&amp;')) {
+      const decodedState = state.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+      return JSON.parse(decodedState);
+    } else if (
+      state.includes('deel_delimiter') ||
+      state.includes('squarespace_delimiter')
+    ) {
+      const [, base64Part] = decodeURIComponent(state).split(
+        /deel_delimiter|squarespace_delimiter/,
+      );
+      const jsonString = Buffer.from(base64Part, 'base64').toString('utf-8');
+      return JSON.parse(jsonString);
+    } else {
+      return JSON.parse(state);
+    }
+  }
+
+  private async triggerInitialCoreSync(
+    vertical: string,
+    providerName: string,
+    linkedUserId: string,
+  ) {
+    const isActive =
+      CONNECTORS_METADATA[vertical.toLowerCase()][providerName.toLowerCase()]
+        .active !== false;
+    if (isActive) {
+      this.logger.log('Triggering initial core sync for all objects...');
+      await this.coreSync.initialSync(
+        vertical.toLowerCase(),
+        providerName,
+        linkedUserId,
+      );
     }
   }
 }

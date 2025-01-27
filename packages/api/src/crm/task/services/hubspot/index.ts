@@ -1,19 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { ITaskService } from '@crm/task/types';
+import { EncryptionService } from '@@core/@core-services/encryption/encryption.service';
+import { LoggerService } from '@@core/@core-services/logger/logger.service';
+import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
+import { ApiResponse } from '@@core/utils/types';
+import { SyncParam } from '@@core/utils/types/interface';
 import { CrmObject } from '@crm/@lib/@types';
+import { ITaskService } from '@crm/task/types';
+import { Injectable } from '@nestjs/common';
+import axios from 'axios';
+import { ServiceRegistry } from '../registry.service';
 import {
   HubspotTaskInput,
   HubspotTaskOutput,
   commonTaskHubspotProperties,
 } from './types';
-import axios from 'axios';
-import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
-import { LoggerService } from '@@core/@core-services/logger/logger.service';
-import { ActionType, handle3rdPartyServiceError } from '@@core/utils/errors';
-import { EncryptionService } from '@@core/@core-services/encryption/encryption.service';
-import { ApiResponse } from '@@core/utils/types';
-import { ServiceRegistry } from '../registry.service';
-import { SyncParam } from '@@core/utils/types/interface';
 
 @Injectable()
 export class HubspotService implements ITaskService {
@@ -41,7 +40,7 @@ export class HubspotService implements ITaskService {
         },
       });
       const resp = await axios.post(
-        `${connection.account_url}/objects/tasks`,
+        `${connection.account_url}/crm/v3/objects/tasks`,
         JSON.stringify(taskData),
         {
           headers: {
@@ -53,7 +52,7 @@ export class HubspotService implements ITaskService {
         },
       );
       const final_resp = await axios.get(
-        `${connection.account_url}/objects/tasks/${resp.data.id}?properties=hs_task_body&associations=deal,company`,
+        `${connection.account_url}/crm/v3/objects/tasks/${resp.data.id}?properties=hs_task_body&associations=deal,company`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -87,7 +86,7 @@ export class HubspotService implements ITaskService {
 
       const commonPropertyNames = Object.keys(commonTaskHubspotProperties);
       const allProperties = [...commonPropertyNames, ...custom_properties];
-      const baseURL = `${connection.account_url}/objects/tasks`;
+      const baseURL = `${connection.account_url}/crm/v3/objects/tasks`;
 
       const queryString = allProperties
         .map((prop) => `properties=${encodeURIComponent(prop)}`)

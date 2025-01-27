@@ -18,6 +18,10 @@ import { TeamleaderConnectionService } from './services/teamleader/teamleader.se
 import { TeamworkConnectionService } from './services/teamwork/teamwork.service';
 import { ZendeskConnectionService } from './services/zendesk/zendesk.service';
 import { ZohoConnectionService } from './services/zoho/zoho.service';
+import { WealthboxConnectionService } from './services/wealthbox/wealthbox.service';
+import { AcceloConnectionService } from './services/accelo/accelo.service';
+import { MicrosoftDynamicsSalesConnectionService } from './services/microsoftdynamicssales/microsoftdynamicssales.service';
+import { SalesforceConnectionService } from './services/salesforce/salesforce.service';
 
 @Module({
   imports: [WebhookModule, BullQueueModule],
@@ -40,6 +44,10 @@ import { ZohoConnectionService } from './services/zoho/zoho.service';
     KeapConnectionService,
     CopperConnectionService,
     TeamworkConnectionService,
+    WealthboxConnectionService,
+    AcceloConnectionService,
+    MicrosoftDynamicsSalesConnectionService,
+    SalesforceConnectionService,
   ],
   exports: [CrmConnectionsService],
 })

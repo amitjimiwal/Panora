@@ -8,6 +8,8 @@ import {
   Param,
   Headers,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import {
@@ -17,19 +19,24 @@ import {
   ApiQuery,
   ApiTags,
   ApiHeader,
+  //ApiKeyAuth,
 } from '@nestjs/swagger';
-import { ApiCustomResponse } from '@@core/utils/types';
+
 import { IncomeStatementService } from './services/incomestatement.service';
 import {
-  UnifiedIncomeStatementInput,
-  UnifiedIncomeStatementOutput,
+  UnifiedAccountingIncomestatementInput,
+  UnifiedAccountingIncomestatementOutput,
 } from './types/model.unified';
 import { ConnectionUtils } from '@@core/connections/@utils';
 import { ApiKeyAuthGuard } from '@@core/auth/guards/api-key.guard';
-import { FetchObjectsQueryDto } from '@@core/utils/dtos/fetch-objects-query.dto';
+import { QueryDto } from '@@core/utils/dtos/query.dto';
+import {
+  ApiGetCustomResponse,
+  ApiPaginatedResponse,
+} from '@@core/utils/dtos/openapi.respone.dto';
 
-@ApiTags('accounting/incomestatement')
-@Controller('accounting/incomestatement')
+@ApiTags('accounting/incomestatements')
+@Controller('accounting/incomestatements')
 export class IncomeStatementController {
   constructor(
     private readonly incomestatementService: IncomeStatementService,
@@ -40,8 +47,8 @@ export class IncomeStatementController {
   }
 
   @ApiOperation({
-    operationId: 'getIncomeStatements',
-    summary: 'List a batch of IncomeStatements',
+    operationId: 'listAccountingIncomeStatement',
+    summary: 'List  IncomeStatements',
   })
   @ApiHeader({
     name: 'x-connection-token',
@@ -49,21 +56,23 @@ export class IncomeStatementController {
     description: 'The connection token',
     example: 'b008e199-eda9-4629-bd41-a01b6195864a',
   })
-  @ApiCustomResponse(UnifiedIncomeStatementOutput)
+  @ApiPaginatedResponse(UnifiedAccountingIncomestatementOutput)
   @UseGuards(ApiKeyAuthGuard)
+  @UsePipes(new ValidationPipe({ transform: true, disableErrorMessages: true }))
   @Get()
   async getIncomeStatements(
     @Headers('x-connection-token') connection_token: string,
-    @Query() query: FetchObjectsQueryDto,
+    @Query() query: QueryDto,
   ) {
     try {
-      const { linkedUserId, remoteSource, connectionId } =
+      const { linkedUserId, remoteSource, connectionId, projectId } =
         await this.connectionUtils.getConnectionMetadataFromConnectionToken(
           connection_token,
         );
       const { remote_data, limit, cursor } = query;
       return this.incomestatementService.getIncomeStatements(
         connectionId,
+        projectId,
         remoteSource,
         linkedUserId,
         limit,
@@ -76,19 +85,21 @@ export class IncomeStatementController {
   }
 
   @ApiOperation({
-    operationId: 'getIncomeStatement',
-    summary: 'Retrieve a IncomeStatement',
+    operationId: 'retrieveAccountingIncomeStatement',
+    summary: 'Retrieve Income Statements',
     description:
-      'Retrieve a incomestatement from any connected Accounting software',
+      'Retrieve Income Statements from any connected Accounting software',
   })
   @ApiParam({
     name: 'id',
+    example: '801f9ede-c698-4e66-a7fc-48d19eebaa4f',
     required: true,
     type: String,
     description: 'id of the incomestatement you want to retrieve.',
   })
   @ApiQuery({
     name: 'remote_data',
+    example: false,
     required: false,
     type: Boolean,
     description:
@@ -100,7 +111,7 @@ export class IncomeStatementController {
     description: 'The connection token',
     example: 'b008e199-eda9-4629-bd41-a01b6195864a',
   })
-  @ApiCustomResponse(UnifiedIncomeStatementOutput)
+  @ApiGetCustomResponse(UnifiedAccountingIncomestatementOutput)
   @UseGuards(ApiKeyAuthGuard)
   @Get(':id')
   async retrieve(
@@ -108,7 +119,7 @@ export class IncomeStatementController {
     @Param('id') id: string,
     @Query('remote_data') remote_data?: boolean,
   ) {
-    const { linkedUserId, remoteSource } =
+    const { linkedUserId, remoteSource, connectionId, projectId } =
       await this.connectionUtils.getConnectionMetadataFromConnectionToken(
         connection_token,
       );
@@ -116,6 +127,8 @@ export class IncomeStatementController {
       id,
       linkedUserId,
       remoteSource,
+      connectionId,
+      projectId,
       remote_data,
     );
   }

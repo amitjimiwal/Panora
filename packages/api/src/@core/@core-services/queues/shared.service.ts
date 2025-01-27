@@ -12,33 +12,49 @@ export class BullQueueService {
     public readonly panoraWebhookDeliveryQueue: Queue,
     @InjectQueue(Queues.SYNC_JOBS_WORKER)
     public readonly syncJobsQueue: Queue,
+    @InjectQueue(Queues.FAILED_PASSTHROUGH_REQUESTS_HANDLER)
+    public readonly failedPassthroughRequestsQueue: Queue,
+    @InjectQueue(Queues.THIRD_PARTY_DATA_INGESTION)
+    public readonly thirdPartyDataIngestionQueue: Queue,
+    @InjectQueue(Queues.RAG_DOCUMENT_PROCESSING)
+    private ragDocumentQueue: Queue,
   ) {}
 
   // getters
-
   getRealtimeWebhookReceiver() {
     return this.realTimeWebhookQueue;
   }
   getPanoraWebhookSender() {
     return this.panoraWebhookDeliveryQueue;
   }
+  getSyncJobsQueue() {
+    return this.syncJobsQueue;
+  }
+  getFailedPassthroughRequestsQueue() {
+    return this.failedPassthroughRequestsQueue;
+  }
+  getRagDocumentQueue() {
+    return this.ragDocumentQueue;
+  }
+  getThirdPartyDataIngestionQueue() {
+    return this.thirdPartyDataIngestionQueue;
+  }
 
-  // setters
-  async queueSyncJob(jobName: string, cron: string) {
+  async removeRepeatableJob(jobName: string) {
     const jobs = await this.syncJobsQueue.getRepeatableJobs();
     for (const job of jobs) {
       if (job.name === jobName) {
         await this.syncJobsQueue.removeRepeatableByKey(job.key);
       }
     }
-    // Add new job with the job name
-    await this.syncJobsQueue.add(
-      jobName,
-      {},
-      {
-        repeat: { cron },
-        jobId: jobName, // Using jobId to identify repeatable jobs
-      },
-    );
+  }
+
+  async queueSyncJob(jobName: string, jobData: any, cron: string) {
+    await this.removeRepeatableJob(jobName);
+    const res = await this.syncJobsQueue.add(jobName, jobData, {
+      repeat: { cron },
+      jobId: jobName,
+    });
+    console.log('job is ' + JSON.stringify(res));
   }
 }

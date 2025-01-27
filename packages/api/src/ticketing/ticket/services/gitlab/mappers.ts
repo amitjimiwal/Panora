@@ -1,18 +1,20 @@
 import { MappersRegistry } from '@@core/@core-services/registries/mappers.registry';
 import { CoreUnification } from '@@core/@core-services/unification/core-unification.service';
 import { OriginalTagOutput } from '@@core/utils/types/original/original.ticketing';
-import { UnifiedTagOutput } from '@ticketing/tag/types/model.unified';
+import { UnifiedTicketingTagOutput } from '@ticketing/tag/types/model.unified';
 import { Injectable } from '@nestjs/common';
 import { TicketingObject } from '@ticketing/@lib/@types';
 import { Utils } from '@ticketing/@lib/@utils';
 import { ITicketMapper } from '@ticketing/ticket/types';
 import {
-  UnifiedTicketInput,
-  UnifiedTicketOutput,
+  UnifiedTicketingTicketInput,
+  UnifiedTicketingTicketOutput,
 } from '@ticketing/ticket/types/model.unified';
 import { GitlabTicketInput, GitlabTicketOutput } from './types';
 import { GitlabTagOutput } from '@ticketing/tag/services/gitlab/types';
 import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
+import { UnifiedTicketingCommentOutput } from '@ticketing/comment/types/model.unified';
+import { GitlabCommentInput } from '@ticketing/comment/services/gitlab/types';
 
 @Injectable()
 export class GitlabTicketMapper implements ITicketMapper {
@@ -26,11 +28,12 @@ export class GitlabTicketMapper implements ITicketMapper {
   }
 
   async desunify(
-    source: UnifiedTicketInput,
+    source: UnifiedTicketingTicketInput,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
     }[],
+    connectionId?: string,
   ): Promise<GitlabTicketInput> {
     const remote_project_id = await this.utils.getCollectionRemoteIdFromUuid(
       source.collections[0] as string,
@@ -61,6 +64,19 @@ export class GitlabTicketMapper implements ITicketMapper {
       result.labels = tags;
     }
 
+    if (source.comment) {
+      const comment =
+        (await this.coreUnificationService.desunify<UnifiedTicketingCommentOutput>({
+          sourceObject: source.comment,
+          targetType: TicketingObject.comment,
+          providerName: 'gitlab',
+          vertical: 'ticketing',
+          connectionId: connectionId,
+          customFieldMappings: [],
+        })) as GitlabCommentInput;
+      result.comment = comment;
+    }
+
     // TODO - Custom fields mapping
     // if (customFieldMappings && source.field_mappings) {
     //   result.meta = {}; // Ensure meta exists
@@ -84,7 +100,7 @@ export class GitlabTicketMapper implements ITicketMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedTicketOutput | UnifiedTicketOutput[]> {
+  ): Promise<UnifiedTicketingTicketOutput | UnifiedTicketingTicketOutput[]> {
     const sourcesArray = Array.isArray(source) ? source : [source];
     return Promise.all(
       sourcesArray.map(async (ticket) =>
@@ -104,7 +120,7 @@ export class GitlabTicketMapper implements ITicketMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedTicketOutput> {
+  ): Promise<UnifiedTicketingTicketOutput> {
     const field_mappings: { [key: string]: any } = {};
     if (customFieldMappings) {
       for (const mapping of customFieldMappings) {
@@ -130,7 +146,7 @@ export class GitlabTicketMapper implements ITicketMapper {
 
     if (ticket.labels) {
       const tags = await this.ingestService.ingestData<
-        UnifiedTagOutput,
+        UnifiedTicketingTagOutput,
         GitlabTagOutput
       >(
         ticket.labels.map(
@@ -161,7 +177,7 @@ export class GitlabTicketMapper implements ITicketMapper {
       }
     }
 
-    const unifiedTicket: UnifiedTicketOutput = {
+    const unifiedTicket: UnifiedTicketingTicketOutput = {
       remote_id: String(ticket.id),
       remote_data: ticket,
       name: ticket.title,

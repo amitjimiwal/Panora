@@ -27,6 +27,20 @@ export class Utils {
     }
   }
 
+  async getTeamRemoteIdFromUuid(uuid: string) {
+    try {
+      const res = await this.prisma.tcg_teams.findFirst({
+        where: {
+          id_tcg_team: uuid,
+        },
+      });
+      if (!res) return undefined;
+      return res.remote_id;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getRemoteIdFromTagName(name: string, connection_id: string) {
     try {
       const res = await this.prisma.tcg_tags.findFirst({
@@ -233,6 +247,20 @@ export class Utils {
       const extension = getFileExtension(file_name);
       if (!extension) throw new Error('extension doesnt exist for your file');
       return MIME_TYPES[extension.toLowerCase()];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  getFileExtensionFromMimeType(mimeType: string): string | undefined {
+    try {
+      const normalizedMimeType = mimeType.toLowerCase();
+      for (const [extension, mime] of Object.entries(MIME_TYPES)) {
+        if (mime.toLowerCase() === normalizedMimeType) {
+          return extension;
+        }
+      }
+      return undefined;
     } catch (error) {
       throw error;
     }

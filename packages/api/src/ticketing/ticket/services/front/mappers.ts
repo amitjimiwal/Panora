@@ -1,15 +1,16 @@
 import { MappersRegistry } from '@@core/@core-services/registries/mappers.registry';
 import { CoreUnification } from '@@core/@core-services/unification/core-unification.service';
-import { OriginalTagOutput } from '@@core/utils/types/original/original.ats';
-import { UnifiedTagOutput } from '@ats/tag/types/model.unified';
+// The following line is commented because it uses code from the ATS Module, which was removed from the project
+//import { OriginalTagOutput } from '@@core/utils/types/original/original.ats';
+import { UnifiedTicketingTagOutput } from '@ticketing/tag/types/model.unified';
 import { Injectable } from '@nestjs/common';
 import { TicketingObject } from '@ticketing/@lib/@types';
 import { Utils } from '@ticketing/@lib/@utils';
 import { ITicketMapper } from '@ticketing/ticket/types';
 import {
   TicketStatus,
-  UnifiedTicketInput,
-  UnifiedTicketOutput,
+  UnifiedTicketingTicketInput,
+  UnifiedTicketingTicketOutput,
 } from '@ticketing/ticket/types/model.unified';
 import { FrontTicketInput, FrontTicketOutput } from './types';
 
@@ -39,7 +40,7 @@ export class FrontTicketMapper implements ITicketMapper {
   }
 
   async desunify(
-    source: UnifiedTicketInput,
+    source: UnifiedTicketingTicketInput,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
@@ -108,7 +109,7 @@ export class FrontTicketMapper implements ITicketMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedTicketOutput | UnifiedTicketOutput[]> {
+  ): Promise<UnifiedTicketingTicketOutput | UnifiedTicketingTicketOutput[]> {
     // If the source is not an array, convert it to an array for mapping
     const sourcesArray = Array.isArray(source) ? source : [source];
 
@@ -130,7 +131,7 @@ export class FrontTicketMapper implements ITicketMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedTicketOutput> {
+  ): Promise<UnifiedTicketingTicketOutput> {
     const field_mappings: { [key: string]: any } = {};
     if (customFieldMappings) {
       for (const mapping of customFieldMappings) {
@@ -153,23 +154,25 @@ export class FrontTicketMapper implements ITicketMapper {
         };
       }
     }
-    if (ticket.tags) {
-      const tags = (await this.coreUnificationService.unify<
-        OriginalTagOutput[]
-      >({
-        sourceObject: ticket.tags,
-        targetType: TicketingObject.tag,
-        providerName: 'front',
-        vertical: 'ticketing',
-        connectionId: connectionId,
-        customFieldMappings: [],
-      })) as UnifiedTagOutput[];
-      opts = {
-        ...opts,
-        tags: tags,
-      };
-    }
-    const unifiedTicket: UnifiedTicketOutput = {
+    // The following code is commented because it uses code from the ATS Module, which was removed from the project
+
+    // if (ticket.tags) {
+    //   const tags = (await this.coreUnificationService.unify<
+    //     OriginalTagOutput[]
+    //   >({
+    //     sourceObject: ticket.tags,
+    //     targetType: TicketingObject.tag,
+    //     providerName: 'front',
+    //     vertical: 'ticketing',
+    //     connectionId: connectionId,
+    //     customFieldMappings: [],
+    //   })) as UnifiedTicketingTagOutput[];
+    //   opts = {
+    //     ...opts,
+    //     tags: tags,
+    //   };
+    // }
+    const unifiedTicket: UnifiedTicketingTicketOutput = {
       remote_id: ticket.id,
       remote_data: ticket,
       name: ticket.subject,

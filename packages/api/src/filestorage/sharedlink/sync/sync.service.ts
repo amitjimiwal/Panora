@@ -6,12 +6,12 @@ import { CoreUnification } from '@@core/@core-services/unification/core-unificat
 import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
 import { WebhookService } from '@@core/@core-services/webhooks/panora-webhooks/webhook.service';
 import { FieldMappingService } from '@@core/field-mapping/field-mapping.service';
-import { IBaseSync, SyncLinkedUserType } from '@@core/utils/types/interface';
+import { IBaseSync } from '@@core/utils/types/interface';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { fs_shared_links as FileStorageSharedLink } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ServiceRegistry } from '../services/registry.service';
-import { UnifiedSharedLinkOutput } from '../types/model.unified';
+import { UnifiedFilestorageSharedlinkOutput } from '../types/model.unified';
 
 @Injectable()
 export class SyncService implements OnModuleInit, IBaseSync {
@@ -34,10 +34,14 @@ export class SyncService implements OnModuleInit, IBaseSync {
     return;
   }
 
+  async kickstartSync(id_project?: string) {
+    return;
+  }
+
   async saveToDb(
     connection_id: string,
     linkedUserId: string,
-    sharedLinks: UnifiedSharedLinkOutput[],
+    sharedLinks: UnifiedFilestorageSharedlinkOutput[],
     originSource: string,
     remote_data: Record<string, any>[],
     extra?: {
@@ -49,7 +53,7 @@ export class SyncService implements OnModuleInit, IBaseSync {
       const shared_links_results: FileStorageSharedLink[] = [];
 
       const updateOrCreateSharedLink = async (
-        sharedLink: UnifiedSharedLinkOutput,
+        sharedLink: UnifiedFilestorageSharedlinkOutput,
         originId: string,
       ) => {
         let existingSl;

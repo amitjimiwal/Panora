@@ -46,6 +46,7 @@ export class ConnectionsStrategiesService {
           status: true,
         },
       });
+      this.logger.log(JSON.stringify(res));
       if (!res) return false;
       return res.status;
     } catch (error) {
@@ -58,6 +59,7 @@ export class ConnectionsStrategiesService {
     type: string,
     attributes: string[],
     values: string[],
+    status?: boolean,
   ) {
     try {
       const checkCSDuplicate =
@@ -78,7 +80,7 @@ export class ConnectionsStrategiesService {
           id_connection_strategy: uuidv4(),
           id_project: projectId,
           type: type,
-          status: true,
+          status: status || true,
         },
       });
       const entity = await this.prisma.cs_entities.create({
@@ -91,6 +93,7 @@ export class ConnectionsStrategiesService {
         const attribute_slug = attributes[i];
         const value = values[i];
         //create all attributes (for oauth =>  client_id, client_secret)
+        //console.log(`Attribute : ${attribute_slug}, value: ${value}`);
         const attribute_ = await this.prisma.cs_attributes.create({
           data: {
             id_cs_attribute: uuidv4(),
@@ -194,7 +197,10 @@ export class ConnectionsStrategiesService {
     let attributes: string[] = [];
     switch (authStrategy) {
       case AuthStrategy.oauth2:
-        attributes = ['client_id', 'client_secret'];
+        const dynamic_attributes =
+          CONNECTORS_METADATA[vertical.toLowerCase()][provider.toLowerCase()]
+            ?.options?.oauth_attributes || [];
+        attributes = ['client_id', 'client_secret', ...dynamic_attributes];
         if (needsSubdomain(provider.toLowerCase(), vertical.toLowerCase())) {
           attributes.push('subdomain');
         }
@@ -277,6 +283,19 @@ export class ConnectionsStrategiesService {
               `${provider.toUpperCase()}_${vertical.toUpperCase()}_${softwareMode.toUpperCase()}_SUBDOMAIN`,
             ),
           };
+        }
+        const object =
+          CONNECTORS_METADATA[vertical.toLowerCase()][provider.toLowerCase()];
+        if (object.options && object.options.oauth_attributes) {
+          const dynamic_attributes = object.options.oauth_attributes;
+          for (const attr of dynamic_attributes) {
+            data = {
+              ...data,
+              [attr.toUpperCase()]: this.configService.get<string>(
+                `${provider.toUpperCase()}_${vertical.toUpperCase()}_${softwareMode.toUpperCase()}_${attr.toUpperCase()}`,
+              ),
+            };
+          }
         }
         return data;
       case AuthStrategy.api_key:

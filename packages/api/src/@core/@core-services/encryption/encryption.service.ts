@@ -9,11 +9,12 @@ export class EncryptionService {
   private iv = crypto.randomBytes(16);
 
   constructor(private env: EnvironmentService, private logger: LoggerService) {
-    this.secretKey = this.env.getCryptoKey();
+    this.secretKey = process.env.ENCRYPT_CRYPTO_SECRET_KEY;
   }
 
   encrypt(data: string): string {
     try {
+      if (!data) throw new Error('Cant encrypt empty string');
       const cipher = crypto.createCipheriv(
         'aes-256-cbc',
         Buffer.from(this.secretKey, 'utf-8'),
@@ -44,5 +45,22 @@ export class EncryptionService {
     } catch (error) {
       throw error;
     }
+  }
+
+  generateCodes(): { codeVerifier: string; codeChallenge: string } {
+    const base64URLEncode = (str: Buffer): string => {
+      return str
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    };
+
+    const verifier = base64URLEncode(Buffer.from(crypto.randomBytes(32)));
+    const challenge = base64URLEncode(
+      crypto.createHash('sha256').update(Buffer.from(verifier)).digest(),
+    );
+
+    return { codeVerifier: verifier, codeChallenge: challenge };
   }
 }

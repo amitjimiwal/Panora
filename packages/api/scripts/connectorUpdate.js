@@ -231,7 +231,7 @@ function updateArrayInFile(filePath, arrayName, newArray) {
   updateFileContents(filePath, newContents);
 }
 
-function updateModuleFile(moduleFile, newServiceDirs) {
+function updateModuleFileForService(moduleFile, newServiceDirs) {
   let moduleFileContent = fs.readFileSync(moduleFile, 'utf8');
 
   // Generate and insert new service imports
@@ -248,6 +248,37 @@ function updateModuleFile(moduleFile, newServiceDirs) {
     const match = moduleFileContent.match(providerRegex);
     if (match && !match[1].includes(serviceClass)) {
       const updatedProviders = match[1] + `\n    ${serviceClass},\n`;
+      moduleFileContent = moduleFileContent.replace(
+        providerRegex,
+        `providers: [\n${updatedProviders}  ],`,
+      );
+    }
+  });
+
+  fs.writeFileSync(moduleFile, moduleFileContent);
+}
+
+function updateModuleFileForMapper(moduleFile, newServiceDirs, objectType) {
+  let moduleFileContent = fs.readFileSync(moduleFile, 'utf8');
+  objectType = objectType.charAt(0).toUpperCase() + objectType.slice(1);
+
+  // Generate and insert new service imports
+  newServiceDirs.forEach((serviceName) => {
+    const mapperClass =
+      serviceName.charAt(0).toUpperCase() +
+      serviceName.slice(1) +
+      objectType +
+      'Mapper';
+    const importStatement = `import { ${mapperClass} } from './services/${serviceName}/mappers';\n`;
+    if (!moduleFileContent.includes(importStatement)) {
+      moduleFileContent = importStatement + moduleFileContent;
+    }
+
+    // Add new service to the providers array if not already present
+    const providerRegex = /providers: \[\n([\s\S]*?)\n  \],/;
+    const match = moduleFileContent.match(providerRegex);
+    if (match && !match[1].includes(mapperClass)) {
+      const updatedProviders = match[1] + `\n    ${mapperClass},\n`;
       moduleFileContent = moduleFileContent.replace(
         providerRegex,
         `providers: [\n${updatedProviders}  ],`,
@@ -328,7 +359,7 @@ function updateInitSQLFile(initSQLFile, newServiceDirs, vertical) {
   let newLines = newServiceDirs
     .map((serviceName) => {
       const columnName = `${vertical.toLowerCase()}_${serviceName.toLowerCase()}`;
-      return ` ${columnName} boolean NOT NULL,\n`;
+      return ` ${columnName} boolean NULL,\n`;
     })
     .join('');
 
@@ -376,17 +407,20 @@ function updateSeedSQLFile(seedSQLFile, newServiceDirs, vertical) {
     fileContent = fileContent.replace(lastMatch[1], newColumnsSection);
 
     // Update each VALUES section
-    fileContent = fileContent.replace(/INSERT INTO connector_sets \(([^)]+)\) VALUES(.*?);/gs, (match) => {
-      return match
-        .replace(/\),\s*\(/g, '),\n    (') // Fix line formatting
-        .replace(/\([^\)]+\)/g, (values, index) => {
-          if (values.startsWith('(id_connector_set')) {
-            return values
-          }
-          let newValues = newColumns.map(() => 'TRUE').join(', ');
-          return values.slice(0, -1) + ', ' + newValues + ')';
-        });
-    });
+    fileContent = fileContent.replace(
+      /INSERT INTO connector_sets \(([^)]+)\) VALUES(.*?);/gs,
+      (match) => {
+        return match
+          .replace(/\),\s*\(/g, '),\n    (') // Fix line formatting
+          .replace(/\([^\)]+\)/g, (values, index) => {
+            if (values.startsWith('(id_connector_set')) {
+              return values;
+            }
+            let newValues = newColumns.map(() => 'TRUE').join(', ');
+            return values.slice(0, -1) + ', ' + newValues + ')';
+          });
+      },
+    );
   }
   // Write the modified content back to the file
   console.log(fileContent);
@@ -399,9 +433,15 @@ function updateSeedSQLFile(seedSQLFile, newServiceDirs, vertical) {
 function updateObjectTypes(baseDir, objectType, vertical) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const servicesDir = path.join(__dirname, baseDir);
+  const targetFileName =
+    vertical === 'filestorage'
+      ? 'file-storage'
+      : vertical === 'marketingautomation'
+      ? 'marketing-automation'
+      : vertical;
   const targetFile = path.join(
     __dirname,
-    `../src/@core/utils/types/original/original.${vertical}.ts`,
+    `../src/@core/utils/types/original/original.${targetFileName}.ts`,
   );
 
   const newServiceDirs = scanDirectory(servicesDir);
@@ -439,7 +479,8 @@ function updateObjectTypes(baseDir, objectType, vertical) {
     `../src/${vertical}/${objectType.toLowerCase()}/${objectType.toLowerCase()}.module.ts`,
   );
 
-  updateModuleFile(moduleFile, newServiceDirs, servicesDir);
+  updateModuleFileForService(moduleFile, newServiceDirs);
+  updateModuleFileForMapper(moduleFile, newServiceDirs, objectType);
 
   // Path to the mappings file
   // const mappingsFile = path.join(

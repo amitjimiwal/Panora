@@ -9,14 +9,18 @@ type UseOAuthProps = {
   returnUrl: string;              // Return URL after OAuth flow
   projectId: string;              // Project ID
   linkedUserId: string;           // Linked User ID
-  optionalApiUrl?: string;        // URL of the User's Server
+  redirectIngressUri: {
+    status: boolean;
+    value: string | null;
+  },
   onSuccess: () => void;
+  additionalParams?: {[key: string]: any}
 };
 
-const useOAuth = ({ providerName, vertical, returnUrl, projectId, linkedUserId, onSuccess }: UseOAuthProps) => {
+const useOAuth = ({ providerName, vertical, returnUrl, projectId, linkedUserId, additionalParams, redirectIngressUri, onSuccess }: UseOAuthProps) => {
   const [isReady, setIsReady] = useState(false);
   const intervalRef = useRef<number | ReturnType<typeof setInterval> | null>(null);
-  const authWindowRef = useRef<Window | null>(null);
+  const authWindowRef = useRef<Window | null>(null);  
 
   useEffect(() => {
     // Perform any setup logic here
@@ -41,12 +45,12 @@ const useOAuth = ({ providerName, vertical, returnUrl, projectId, linkedUserId, 
     }
   };
 
+
   const openModal = async (onWindowClose: () => void) => {
     const apiUrl = config.API_URL!;
     const authUrl = await constructAuthUrl({
-      projectId, linkedUserId, providerName, returnUrl, apiUrl, vertical
+      projectId, linkedUserId, providerName, returnUrl, apiUrl , vertical, additionalParams, redirectUriIngress: redirectIngressUri 
     });
-    console.log('auth url is '+ authUrl)
 
     if (!authUrl) {
       throw new Error("Auth Url is Invalid " + authUrl);
@@ -56,19 +60,19 @@ const useOAuth = ({ providerName, vertical, returnUrl, projectId, linkedUserId, 
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
     const authWindow = window.open(authUrl as string, '_blank', `width=${width},height=${height},top=${top},left=${left}`); 
-    authWindowRef.current = authWindow;
+    authWindowRef.current = authWindow; 
 
     clearExistingInterval(false);
 
     const interval = setInterval(() => {
       try {
         const redirectedURL = authWindow!.location.href;
-        // const redirectedURL = authWindow!.location.protocol + '//' + authWindow!.location.hostname + (authWindow!.location.port ? ':' + authWindow!.location.port : '');
-        if (redirectedURL === returnUrl) {
-          onSuccess();
+        const urlParams = new URL(redirectedURL).searchParams;
+        const success = urlParams.get('success'); // Example parameter
+        if (redirectedURL === returnUrl || success) {
+          onSuccess(); 
           clearExistingInterval(true);
         }
-
       } catch (e) {
         console.error(e)
       }

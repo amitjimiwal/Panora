@@ -1,15 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { IFileService } from '@filestorage/file/types';
-import { FileStorageObject } from '@filestorage/@lib/@types';
-import axios from 'axios';
-import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
-import { LoggerService } from '@@core/@core-services/logger/logger.service';
-import { ActionType, handle3rdPartyServiceError } from '@@core/utils/errors';
 import { EncryptionService } from '@@core/@core-services/encryption/encryption.service';
+import { LoggerService } from '@@core/@core-services/logger/logger.service';
+import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
 import { ApiResponse } from '@@core/utils/types';
-import { ServiceRegistry } from '../registry.service';
-import { BoxFileInput, BoxFileOutput } from './types';
 import { SyncParam } from '@@core/utils/types/interface';
+import { FileStorageObject } from '@filestorage/@lib/@types';
+import { IFileService } from '@filestorage/file/types';
+import { Injectable } from '@nestjs/common';
+import axios from 'axios';
+import { ServiceRegistry } from '../registry.service';
+import { BoxFileOutput } from './types';
 
 @Injectable()
 export class BoxService implements IFileService {
@@ -45,7 +44,7 @@ export class BoxService implements IFileService {
       });
 
       const resp = await axios.get(
-        `${connection.account_url}/folders/${folder.remote_id}/items`,
+        `${connection.account_url}/2.0/folders/${folder.remote_id}/items`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -68,5 +67,20 @@ export class BoxService implements IFileService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async downloadFile(fileId: string, connection: any): Promise<Buffer> {
+    const response = await axios.get(
+      `${connection.account_url}/2.0/files/${fileId}/content`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.cryptoService.decrypt(
+            connection.access_token,
+          )}`,
+        },
+        responseType: 'arraybuffer',
+      },
+    );
+    return Buffer.from(response.data);
   }
 }

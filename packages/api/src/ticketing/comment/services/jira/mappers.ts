@@ -3,10 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { Utils } from '@ticketing/@lib/@utils';
 import { ICommentMapper } from '@ticketing/comment/types';
 import {
-  UnifiedCommentInput,
-  UnifiedCommentOutput,
+  UnifiedTicketingCommentInput,
+  UnifiedTicketingCommentOutput,
 } from '@ticketing/comment/types/model.unified';
 import { JiraCommentInput, JiraCommentOutput } from './types';
+import { OriginalCommentOutput } from '@@core/utils/types/original/original.ticketing';
 @Injectable()
 export class JiraCommentMapper implements ICommentMapper {
   constructor(private mappersRegistry: MappersRegistry, private utils: Utils) {
@@ -14,14 +15,28 @@ export class JiraCommentMapper implements ICommentMapper {
   }
 
   async desunify(
-    source: UnifiedCommentInput,
+    source: UnifiedTicketingCommentInput,
     customFieldMappings?: {
       slug: string;
       remote_id: string;
     }[],
   ): Promise<JiraCommentInput> {
     const result: JiraCommentInput = {
-      body: source.body,
+      body: {
+        content: [
+          {
+            content: [
+              {
+                text: source.body,
+                type: 'text',
+              },
+            ],
+            type: 'paragraph',
+          },
+        ],
+        type: 'doc',
+        version: 1,
+      },
     };
     if (source.attachments) {
       result.attachments = source.attachments as string[];
@@ -36,7 +51,7 @@ export class JiraCommentMapper implements ICommentMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedCommentOutput | UnifiedCommentOutput[]> {
+  ): Promise<UnifiedTicketingCommentOutput | UnifiedTicketingCommentOutput[]> {
     if (!Array.isArray(source)) {
       return await this.mapSingleCommentToUnified(
         source,
@@ -62,7 +77,7 @@ export class JiraCommentMapper implements ICommentMapper {
       slug: string;
       remote_id: string;
     }[],
-  ): Promise<UnifiedCommentOutput> {
+  ): Promise<UnifiedTicketingCommentOutput> {
     let opts: any = {};
 
     if (comment.author.accountId) {

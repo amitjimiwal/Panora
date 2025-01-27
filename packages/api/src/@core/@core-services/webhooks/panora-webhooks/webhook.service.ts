@@ -3,9 +3,9 @@ import { PrismaService } from '@@core/@core-services/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { LoggerService } from '@@core/@core-services/logger/logger.service';
 import { WebhooksError } from '@@core/utils/errors';
-import { WebhookDto } from './dto/webhook.dto';
+import { EventPayload, WebhookDto } from './dto/webhook.dto';
 import axios from 'axios';
-import crypto from 'crypto';
+import { createHmac } from 'crypto';
 import { BullQueueService } from '@@core/@core-services/queues/shared.service';
 
 @Injectable()
@@ -18,10 +18,49 @@ export class WebhookService {
     this.logger.setContext(WebhookService.name);
   }
 
+  private safeSerialize(data: any): any {
+    return JSON.parse(
+      JSON.stringify(data, (key, value) => {
+        if (typeof value === 'bigint') {
+          return value.toString();
+        }
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        if (typeof value === 'function') {
+          return value.toString();
+        }
+        if (value === undefined) {
+          return null;
+        }
+        if (typeof value === 'symbol') {
+          return value.toString();
+        }
+        if (
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+        ) {
+          if (value.toJSON && typeof value.toJSON === 'function') {
+            return value.toJSON();
+          }
+          const proto = Object.getPrototypeOf(value);
+          if (
+            proto &&
+            proto.constructor &&
+            proto.constructor.name !== 'Object'
+          ) {
+            return `[object ${proto.constructor.name}]`;
+          }
+        }
+        return value;
+      }),
+    );
+  }
+
   generateSignature(payload: any, secret: string): string {
     try {
-      return crypto
-        .createHmac('sha256', secret)
+      return createHmac('sha256', secret)
         .update(JSON.stringify(payload))
         .digest('hex');
     } catch (error) {
@@ -41,10 +80,17 @@ export class WebhookService {
     }
   }
 
-  async updateStatusWebhookEndpoint(id: string, active: boolean) {
+  async updateStatusWebhookEndpoint(
+    id: string,
+    active: boolean,
+    projectId: string,
+  ) {
     try {
       return await this.prisma.webhook_endpoints.update({
-        where: { id_webhook_endpoint: id },
+        where: {
+          id_webhook_endpoint: id,
+          id_project: projectId,
+        },
         data: { active: active },
       });
     } catch (error) {
@@ -52,7 +98,7 @@ export class WebhookService {
     }
   }
 
-  async createWebhookEndpoint(data: WebhookDto) {
+  async createWebhookEndpoint(data: WebhookDto, projectId: string) {
     try {
       return await this.prisma.webhook_endpoints.create({
         data: {
@@ -62,7 +108,7 @@ export class WebhookService {
           secret: uuidv4(),
           active: true,
           created_at: new Date(),
-          id_project: data.id_project,
+          id_project: projectId,
           scope: data.scope,
         },
       });
@@ -71,11 +117,12 @@ export class WebhookService {
     }
   }
 
-  async deleteWebhook(whId: string) {
+  async deleteWebhook(whId: string, projectId: string) {
     try {
       return await this.prisma.webhook_endpoints.delete({
         where: {
           id_webhook_endpoint: whId,
+          id_project: projectId,
         },
       });
     } catch (error) {
@@ -114,11 +161,11 @@ export class WebhookService {
       if (!webhook) return;
 
       this.logger.log('handling webhook payload....');
-
+      const serializedData = this.safeSerialize(data);
       const w_payload = await this.prisma.webhooks_payloads.create({
         data: {
           id_webhooks_payload: uuidv4(),
-          data: JSON.stringify(data),
+          data: JSON.stringify(serializedData),
         },
       });
       this.logger.log('handling webhook delivery....');
@@ -136,7 +183,7 @@ export class WebhookService {
       });
       this.logger.log('adding webhook to the queue ');
       // we send the delivery webhook to the queue so it can be processed by our dispatcher worker
-      const job = await this.queues.getPanoraWebhookSender().add({
+      await this.queues.getPanoraWebhookSender().add({
         webhook_delivery_id: w_delivery.id_webhook_delivery_attempt,
       });
     } catch (error) {
@@ -213,6 +260,7 @@ export class WebhookService {
             {
               id_event: deliveryAttempt.id_event,
               data: deliveryAttempt.webhooks_payloads.data,
+              type: eventType,
             },
             {
               headers: {
@@ -287,14 +335,14 @@ export class WebhookService {
     secret: string,
   ) {
     try {
-      const expected = this.generateSignature(payload, secret);
+      const expected = this.generateSignature(payload.data, secret);
       if (expected !== signature) {
         throw new WebhooksError({
           name: 'INVALID_SIGNATURE_ERROR',
-          message: `Signature mismatch for the payload received with signature=${signature}`,
+          message: `Signature mismatch for the payload received with expected=${expected} and signature=${signature}`,
         });
       }
-      return 200;
+      return payload;
     } catch (error) {
       throw error;
     }

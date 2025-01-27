@@ -1,3 +1,17 @@
+import { MicrosoftdynamicssalesEngagementInput, MicrosoftdynamicssalesEngagementOutput } from '@crm/engagement/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesTaskInput, MicrosoftdynamicssalesTaskOutput } from '@crm/task/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesNoteInput, MicrosoftdynamicssalesNoteOutput } from '@crm/note/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesDealInput, MicrosoftdynamicssalesDealOutput } from '@crm/deal/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesContactInput, MicrosoftdynamicssalesContactOutput } from '@crm/contact/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesCompanyInput, MicrosoftdynamicssalesCompanyOutput } from '@crm/company/services/microsoftdynamicssales/types';
+
+import { MicrosoftdynamicssalesUserInput, MicrosoftdynamicssalesUserOutput } from '@crm/user/services/microsoftdynamicssales/types';
+
 import { AttioCompanyOutput } from '@crm/company/services/attio/types';
 import { HubspotCompanyOutput } from '@crm/company/services/hubspot/types';
 import { PipedriveCompanyOutput } from '@crm/company/services/pipedrive/types';
@@ -138,6 +152,12 @@ import {
   ZendeskUserInput,
   ZendeskUserOutput,
 } from '@ticketing/user/services/zendesk/types';
+import { SalesforceContactInput, SalesforceContactOutput } from '@crm/contact/services/salesforce/types';
+import { SalesforceDealInput, SalesforceDealOutput } from '@crm/deal/services/salesforce/types';
+import { SalesforceCompanyInput, SalesforceCompanyOutput } from '@crm/company/services/salesforce/types';
+import { SalesforceNoteInput, SalesforceNoteOutput } from '@crm/note/services/salesforce/types';
+import { SalesforceTaskInput } from '@crm/task/services/salesforce/types';
+import { SalesforceUserInput, SalesforceUserOutput } from '@crm/user/services/salesforce/types';
 
 /* INPUT */
 
@@ -148,7 +168,9 @@ export type OriginalContactInput =
   | ZendeskContactInput
   | PipedriveContactInput
   | AttioContactInput
-  | CloseContactInput;
+  | CloseContactInput 
+  | MicrosoftdynamicssalesContactInput
+  | SalesforceContactInput;
 
 /* deal */
 export type OriginalDealInput =
@@ -157,7 +179,9 @@ export type OriginalDealInput =
   | ZendeskDealOutput
   | PipedriveDealOutput
   | CloseDealOutput
-  | AttioDealInput;
+  | AttioDealInput 
+  | MicrosoftdynamicssalesDealInput
+  | SalesforceDealInput
 
 /* company */
 export type OriginalCompanyInput =
@@ -166,7 +190,7 @@ export type OriginalCompanyInput =
   | ZendeskCompanyOutput
   | PipedriveCompanyOutput
   | AttioCompanyOutput
-  | CloseCompanyOutput;
+  | CloseCompanyOutput | MicrosoftdynamicssalesCompanyInput | SalesforceCompanyInput
 
 /* engagement */
 export type OriginalEngagementInput =
@@ -174,7 +198,7 @@ export type OriginalEngagementInput =
   | ZohoEngagementInput
   | ZendeskEngagementInput
   | PipedriveEngagementInput
-  | CloseEngagementInput;
+  | CloseEngagementInput | MicrosoftdynamicssalesEngagementInput;
 
 /* note */
 export type OriginalNoteInput =
@@ -183,7 +207,7 @@ export type OriginalNoteInput =
   | ZendeskNoteInput
   | PipedriveNoteInput
   | CloseNoteInput
-  | AttioNoteInput;
+  | AttioNoteInput | MicrosoftdynamicssalesNoteInput | SalesforceNoteInput;
 
 /* task */
 export type OriginalTaskInput =
@@ -192,7 +216,7 @@ export type OriginalTaskInput =
   | ZendeskTaskInput
   | PipedriveTaskInput
   | CloseTaskInput
-  | AttioTaskInput;
+  | AttioTaskInput | MicrosoftdynamicssalesTaskInput   | SalesforceTaskInput;
 
 /* stage */
 export type OriginalStageInput =
@@ -210,7 +234,7 @@ export type OriginalUserInput =
   | ZohoUserInput
   | ZendeskUserInput
   | PipedriveUserInput
-  | CloseUserOutput;
+  | CloseUserOutput | MicrosoftdynamicssalesUserInput   | SalesforceUserInput
 
 export type CrmObjectInput =
   | OriginalContactInput
@@ -230,7 +254,7 @@ export type OriginalContactOutput =
   | ZendeskContactOutput
   | PipedriveContactOutput
   | AttioContactOutput
-  | CloseContactOutput;
+  | CloseContactOutput | MicrosoftdynamicssalesContactOutput | SalesforceContactOutput;
 
 /* deal */
 export type OriginalDealOutput =
@@ -239,7 +263,7 @@ export type OriginalDealOutput =
   | ZendeskDealOutput
   | PipedriveDealOutput
   | CloseDealOutput
-  | AttioDealOutput;
+  | AttioDealOutput | MicrosoftdynamicssalesDealOutput | SalesforceDealOutput;
 
 /* company */
 export type OriginalCompanyOutput =
@@ -248,7 +272,7 @@ export type OriginalCompanyOutput =
   | ZendeskCompanyOutput
   | PipedriveCompanyOutput
   | AttioCompanyOutput
-  | CloseCompanyOutput;
+  | CloseCompanyOutput | MicrosoftdynamicssalesCompanyOutput | SalesforceCompanyOutput;
 
 /* engagement */
 export type OriginalEngagementOutput =
@@ -256,7 +280,7 @@ export type OriginalEngagementOutput =
   | ZohoEngagementOutput
   | ZendeskEngagementOutput
   | PipedriveEngagementOutput
-  | CloseEngagementOutput;
+  | CloseEngagementOutput | MicrosoftdynamicssalesEngagementOutput;
 
 /* note */
 export type OriginalNoteOutput =
@@ -265,7 +289,7 @@ export type OriginalNoteOutput =
   | ZendeskNoteOutput
   | PipedriveNoteOutput
   | CloseNoteOutput
-  | AttioNoteOutput;
+  | AttioNoteOutput | MicrosoftdynamicssalesNoteOutput  | SalesforceNoteOutput;
 
 /* task */
 export type OriginalTaskOutput =
@@ -274,7 +298,7 @@ export type OriginalTaskOutput =
   | ZendeskTaskOutput
   | PipedriveTaskOutput
   | CloseTaskOutput
-  | AttioTaskOutput;
+  | AttioTaskOutput | MicrosoftdynamicssalesTaskOutput;
 
 /* stage */
 export type OriginalStageOutput =
@@ -293,7 +317,7 @@ export type OriginalUserOutput =
   | ZendeskUserOutput
   | PipedriveUserOutput
   | CloseUserInput
-  | AttioUserOutput;
+  | AttioUserOutput | MicrosoftdynamicssalesUserOutput| SalesforceUserOutput;
 
 export type CrmObjectOutput =
   | OriginalContactOutput

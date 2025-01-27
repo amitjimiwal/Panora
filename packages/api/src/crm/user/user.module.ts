@@ -1,3 +1,5 @@
+import { MicrosoftdynamicssalesUserMapper } from './services/microsoftdynamicssales/mappers';
+import { MicrosoftdynamicssalesService } from './services/microsoftdynamicssales';
 import { BullQueueModule } from '@@core/@core-services/queues/queue.module';
 
 import { IngestDataService } from '@@core/@core-services/unification/ingest-data.service';
@@ -20,8 +22,9 @@ import { ZohoService } from './services/zoho';
 import { ZohoUserMapper } from './services/zoho/mappers';
 import { SyncService } from './sync/sync.service';
 import { UserController } from './user.controller';
+import { SalesforceService } from './services/salesforce';
+import { SalesforceUserMapper } from './services/salesforce/mappers';
 @Module({
-  imports: [BullQueueModule],
   controllers: [UserController],
   providers: [
     UserService,
@@ -37,6 +40,8 @@ import { UserController } from './user.controller';
     HubspotService,
     AttioService,
     CloseService,
+    SalesforceService,
+    MicrosoftdynamicssalesService,
     /* PROVIDERS MAPPERS */
     ZendeskUserMapper,
     ZohoUserMapper,
@@ -44,6 +49,8 @@ import { UserController } from './user.controller';
     HubspotUserMapper,
     AttioUserMapper,
     CloseUserMapper,
+    SalesforceUserMapper,
+    MicrosoftdynamicssalesUserMapper,
   ],
   exports: [SyncService, ServiceRegistry, WebhookService],
 })

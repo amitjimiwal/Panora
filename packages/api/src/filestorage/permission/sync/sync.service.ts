@@ -11,7 +11,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { fs_permissions as FileStoragePermission } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ServiceRegistry } from '../services/registry.service';
-import { UnifiedPermissionOutput } from '../types/model.unified';
+import { UnifiedFilestoragePermissionOutput } from '../types/model.unified';
 
 @Injectable()
 export class SyncService implements OnModuleInit, IBaseSync {
@@ -34,12 +34,16 @@ export class SyncService implements OnModuleInit, IBaseSync {
     return;
   }
 
+  async kickstartSync(id_project?: string) {
+    return;
+  }
+
   // permissions are synced within file, folders, users, groups
 
   async saveToDb(
     connection_id: string,
     linkedUserId: string,
-    permissions: UnifiedPermissionOutput[],
+    permissions: UnifiedFilestoragePermissionOutput[],
     originSource: string,
     remote_data: Record<string, any>[],
     extra?: {
@@ -51,7 +55,7 @@ export class SyncService implements OnModuleInit, IBaseSync {
       const permissions_results: FileStoragePermission[] = [];
 
       const updateOrCreatePermission = async (
-        permission: UnifiedPermissionOutput,
+        permission: UnifiedFilestoragePermissionOutput,
         originId: string,
         extra: { object_name: 'file' | 'folder'; value: string },
       ) => {
@@ -64,10 +68,12 @@ export class SyncService implements OnModuleInit, IBaseSync {
                 id_fs_file: extra.value,
               },
             });
-            if (file?.id_fs_permission) {
-              existingPermission = await this.prisma.fs_permissions.findUnique({
+            if (file?.id_fs_permissions?.length > 0) {
+              existingPermission = await this.prisma.fs_permissions.findMany({
                 where: {
-                  id_fs_permission: file.id_fs_permission,
+                  id_fs_permission: {
+                    in: file.id_fs_permissions,
+                  },
                 },
               });
             }
@@ -77,10 +83,12 @@ export class SyncService implements OnModuleInit, IBaseSync {
                 id_fs_folder: extra.value,
               },
             });
-            if (folder?.id_fs_permission) {
-              existingPermission = await this.prisma.fs_permissions.findUnique({
+            if (folder?.id_fs_permissions?.length > 0) {
+              existingPermission = await this.prisma.fs_permissions.findMany({
                 where: {
-                  id_fs_permission: folder.id_fs_permission,
+                  id_fs_permission: {
+                    in: folder.id_fs_permissions,
+                  },
                 },
               });
             }
@@ -97,8 +105,8 @@ export class SyncService implements OnModuleInit, IBaseSync {
         const baseData: any = {
           roles: permission.roles ?? null,
           type: permission.type ?? null,
-          user_id: permission.user_id ?? null,
-          group_id: permission.group_id ?? null,
+          user: permission.user_id ?? null,
+          group: permission.group_id ?? null,
           modified_at: new Date(),
         };
 

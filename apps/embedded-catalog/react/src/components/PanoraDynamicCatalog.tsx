@@ -91,7 +91,7 @@ const DynamicCatalog = ({projectId,linkedUserId, category, optionalApiUrl} : Dyn
     projectId: projectId,
     linkedUserId: linkedUserId,
     optionalApiUrl: optionalApiUrl,
-    onSuccess: () => {
+    onSuccess: () => { 
       console.log('OAuth successful');
       setOpenSuccessDialog(true);
     },
@@ -168,7 +168,7 @@ const DynamicCatalog = ({projectId,linkedUserId, category, optionalApiUrl} : Dyn
           return [{
               connector_name: connector_name,
               category: category,
-              status: String(value)
+              status: value === null ? "true" : String(value)
           }];
       }
       return [];
